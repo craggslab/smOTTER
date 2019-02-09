@@ -4,17 +4,20 @@ import QtCharts 2.3
 import QtQuick.Layouts 1.12
 import QtQuick.Controls 2.5
 import QtQuick.Controls.Material 2.3
+import QtQuick.Controls.Universal 2.3
 
 Pane {
-    width: 640
-    height: 480
+    width: 1440
+    height: 900
 
     //Universal.theme: Universal.Dark
     //Universal.accent: Universal.Steel
     Material.theme: Material.Dark
     Material.primary: Material.BlueGrey
-    Material.accent: Material.Red
+    Material.accent: Material.Blue
 
+    Universal.theme: Universal.Dark
+    Universal.accent: Universal.Cyan
 
     GridLayout {
         anchors.top: parent.top
@@ -38,7 +41,7 @@ Pane {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredWidth: 2
-            Layout.preferredHeight: 2
+            Layout.preferredHeight: 1.5
 
             Material.elevation: 6
 
@@ -48,15 +51,15 @@ Pane {
                 Layout.row: 0
 
                 TabButton {
-                    text: qsTr("Tab1")
+                    text: qsTr("Live Trace")
                     width: implicitWidth
                 }
                 TabButton {
-                    text: qsTr("Tab2")
+                    text: qsTr("Photon Distribution")
                     width: implicitWidth
                 }
                 TabButton {
-                    text: qsTr("Tab3")
+                    text: qsTr("NI Card Settings")
                     width: implicitWidth
                 }
             }
@@ -68,13 +71,12 @@ Pane {
                 Layout.row: 1
 
                 Page {
-                    TextArea {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
+                    LiveTraceView {
                         width: parent.width
                         height: parent.height
-
-                        text: "Page 1"
-                        horizontalAlignment: TextEdit.AlignHCenter
-                        verticalAlignment: TextEdit.AlignVCenter
                     }
                 }
 
@@ -83,20 +85,16 @@ Pane {
                         width: parent.width
                         height: parent.height
 
-                        text: "Comming Sonn...."
+                        text: "Coming soon...."
                         horizontalAlignment: TextEdit.AlignHCenter
                         verticalAlignment: TextEdit.AlignVCenter
                     }
                 }
 
-                Page {
-                    TextArea {
+                Pane {
+                    NISettingsView {
                         width: parent.width
                         height: parent.height
-
-                        text: "Coming soon..."
-                        horizontalAlignment: TextEdit.AlignHCenter
-                        verticalAlignment: TextEdit.AlignVCenter
                     }
                 }
 
@@ -109,7 +107,7 @@ Pane {
 
         GroupBox {
             id: histoBox
-            title: "Histogram"
+            title: "ES Histogram"
 
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -121,20 +119,27 @@ Pane {
         }
 
         GroupBox {
-            title: "Waveform Settings"
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignBottom
             Layout.preferredWidth: 1
             Layout.preferredHeight: 1
 
+
+            title: "Acquisition"
+
             Material.elevation: 6
 
-
+            AcquisitionSettingsView {
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+            }
         }
 
         GroupBox {
-            title: "Save Location"
+            title: "Laser Duty Cycles"
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignBottom
@@ -142,10 +147,17 @@ Pane {
             Layout.preferredHeight: 1
 
             Material.elevation: 6
+
+            LaserDutyCyclesView {
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+            }
         }
 
         GroupBox {
-            title: "Space"
+            title: "Save Settings"
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignBottom
@@ -153,6 +165,14 @@ Pane {
             Layout.preferredHeight: 1
 
             Material.elevation: 6
+
+            SaveSettingsView {
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+            }
+
         }
 
     }

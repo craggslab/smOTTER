@@ -1,8 +1,13 @@
 #include <QtWidgets/QApplication>
+#include <QtQml/QQmlContext>
 #include <QtQuick/QQuickView>
 #include <QtCore/QDir>
 #include <QtQml/QQmlEngine>
 #include <QQuickStyle>
+#include <QDebug>
+#include <QString>
+
+#include "nidatasource.h"
 
 int main(int argc, char *argv[])
 {
@@ -17,10 +22,13 @@ int main(int argc, char *argv[])
 
     viewer.setTitle(QStringLiteral("smFRETBox Acquisition"));
 
+    NIDataSource dataSource(&viewer);
+    viewer.rootContext()->setContextProperty("dataSource", &dataSource);
+
     viewer.setSource(QUrl("qrc:/main.qml"));
     viewer.setResizeMode(QQuickView::SizeRootObjectToView);
-    //viewer.setColor(QColor("#303030"));
     viewer.show();
+
 
     return app.exec();
 }

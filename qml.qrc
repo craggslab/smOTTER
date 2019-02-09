@@ -2,5 +2,9 @@
     <qresource prefix="/">
         <file>main.qml</file>
         <file>LiveTraceView.qml</file>
+        <file>NISettingsView.qml</file>
+        <file>AcquisitionSettingsView.qml</file>
+        <file>LaserDutyCyclesView.qml</file>
+        <file>SaveSettingsView.qml</file>
     </qresource>
 </RCC>
