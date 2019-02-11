@@ -58,6 +58,7 @@ ScrollView {
         }
 
         ComboBox {
+            id: donorLaserPinComboBox
             Material.theme: Material.Light
 
             Layout.alignment: Qt.AlignVCenter
@@ -66,6 +67,7 @@ ScrollView {
 
             model: dataSource.digitalOutLines
             onModelChanged: currentIndex = findIndexOfDefault(model, qsTr("port0/line0"))
+            onCurrentTextChanged: dataSource.setDonorLaserPin(currentText)
         }
 
         Label {
@@ -75,6 +77,7 @@ ScrollView {
         }
 
         ComboBox {
+            id: acceptorLaserPinComboBox
             Material.theme: Material.Light
 
             Layout.alignment: Qt.AlignVCenter
@@ -83,6 +86,7 @@ ScrollView {
 
             model: dataSource.digitalOutLines
             onModelChanged: currentIndex = findIndexOfDefault(model, qsTr("port0/line1"))
+            onCurrentTextChanged: dataSource.setAcceptorLaserPin(currentText)
         }
 
         Label {
@@ -92,6 +96,7 @@ ScrollView {
         }
 
         ComboBox {
+            id: donorDetectorCounterComboBox
             Material.theme: Material.Light
 
             Layout.alignment: Qt.AlignVCenter
@@ -100,6 +105,7 @@ ScrollView {
 
             model: dataSource.counters
             onModelChanged: currentIndex = findIndexOfDefault(model, "ctr0")
+            onCurrentTextChanged: dataSource.setDonorDetectorCounter(currentText)
         }
 
         Label {
@@ -109,6 +115,7 @@ ScrollView {
         }
 
         ComboBox {
+            id: acceptorDetectorCounterComboBox
             Material.theme: Material.Light
 
             Layout.alignment: Qt.AlignVCenter
@@ -117,6 +124,7 @@ ScrollView {
 
             model: dataSource.counters
             onModelChanged: currentIndex = findIndexOfDefault(model, "ctr1")
+            onCurrentTextChanged: dataSource.setAcceptorDetectorCounter(currentText)
         }
 
         Label {
@@ -126,6 +134,7 @@ ScrollView {
         }
 
         ComboBox {
+            id: donorDetectorPinComboBox
             Material.theme: Material.Light
 
             Layout.alignment: Qt.AlignVCenter
@@ -134,6 +143,7 @@ ScrollView {
 
             model: dataSource.counterLines
             onModelChanged: currentIndex = findIndexOfDefault(model, "PFI1");
+            onCurrentTextChanged: dataSource.setDonorDetectorPin(currentText)
         }
 
         Label {
@@ -143,6 +153,7 @@ ScrollView {
         }
 
         ComboBox {
+            id: acceptorDetectorPinComboBox
             Material.theme: Material.Light
 
             Layout.alignment: Qt.AlignVCenter
@@ -151,6 +162,7 @@ ScrollView {
 
             model: dataSource.counterLines
             onModelChanged: currentIndex = findIndexOfDefault(model, "PFI2");
+            onCurrentTextChanged: dataSource.setAcceptorDetectorPin(currentText)
         }
 
         Label {
@@ -160,6 +172,7 @@ ScrollView {
         }
 
         ComboBox {
+            id: donorDetectorGateComboBox
             Material.theme: Material.Light
 
             Layout.alignment: Qt.AlignVCenter
@@ -168,6 +181,7 @@ ScrollView {
 
             model: dataSource.digitalOutLines
             onModelChanged: currentIndex = findIndexOfDefault(model, "port0/line8")
+            onCurrentTextChanged: dataSource.setDonorDetectorGate(currentText)
         }
 
         Label {
@@ -177,6 +191,7 @@ ScrollView {
         }
 
         ComboBox {
+            id: acceptorDetectorGateComboBox
             Material.theme: Material.Light
 
             Layout.alignment: Qt.AlignVCenter
@@ -185,6 +200,7 @@ ScrollView {
 
             model: dataSource.digitalOutLines
             onModelChanged: currentIndex = findIndexOfDefault(model, "port0/line9")
+            onCurrentTextChanged: dataSource.setAcceptorDetectorGate(currentText)
         }
 
         Label {
@@ -194,6 +210,7 @@ ScrollView {
         }
 
         ComboBox {
+            id: timebaseComboBox
             Material.theme: Material.Light
 
             Layout.alignment: Qt.AlignVCenter
@@ -202,6 +219,7 @@ ScrollView {
 
             model: dataSource.timebases
             onModelChanged: currentIndex = findIndexOfDefault(model, "100MHzTimebase")
+            onCurrentTextChanged: dataSource.setTimebase(currentText)
         }
 
         Label {
@@ -211,12 +229,19 @@ ScrollView {
             text: "Laser Control Resolution (us):"
         }
 
-        TextField {
+        SpinBox {
+            id: laserControlResSpinBox
             Layout.alignment: Qt.AlignVCenter
-            Layout.fillHeight: true
             Layout.fillWidth: true
+            Layout.fillHeight: true
 
-            text: qsTr("1")
+            editable: true
+
+            from: 1
+            to: 1000
+            value: 1
+
+            onValueChanged: dataSource.setLaserControlResolution(value)
         }
     }
 
@@ -225,5 +250,23 @@ ScrollView {
             if (model[indx] === dflt) return indx
 
         return 0
+    }
+
+    function sendValuesChanged() {
+        dataSource.setDonorLaserPin(donorLaserPinComboBox.currentText)
+        dataSource.setAcceptorLaserPin(acceptorLaserPinComboBox.currentText)
+        dataSource.setDonorDetectorCounter(donorDetectorCounterComboBox.currentText)
+        dataSource.setAcceptorDetectorCounter(acceptorDetectorCounterComboBox.currentText)
+        dataSource.setDonorDetectorPin(donorDetectorPinComboBox.currentText)
+        dataSource.setAcceptorDetectorPin(acceptorDetectorPinComboBox.currentText)
+        dataSource.setDonorDetectorGate(donorDetectorGateComboBox.currentText)
+        dataSource.setAcceptorDetectorGate(acceptorDetectorGateComboBox.currentText)
+        dataSource.setTimebase(timebaseComboBox.currentText)
+        dataSource.setLaserControlResolution(laserControlResSpinBox.value)
+    }
+
+    Connections {
+        target: dataSource
+        onSendValues: sendValuesChanged()
     }
 }

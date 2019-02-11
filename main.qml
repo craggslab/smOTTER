@@ -5,19 +5,30 @@ import QtQuick.Layouts 1.12
 import QtQuick.Controls 2.5
 import QtQuick.Controls.Material 2.3
 import QtQuick.Controls.Universal 2.3
+import Qt.labs.settings 1.1
+
 
 Pane {
+    id: mainWindow
     width: 1440
     height: 900
 
-    //Universal.theme: Universal.Dark
-    //Universal.accent: Universal.Steel
+
     Material.theme: Material.Dark
     Material.primary: Material.BlueGrey
     Material.accent: Material.Blue
 
     Universal.theme: Universal.Dark
     Universal.accent: Universal.Cyan
+
+    Settings { //TODO: finish persistent settings
+        property alias mainWindow_x: mainWindow.x
+        property alias mainWindow_y: mainWindow.y
+        property alias mainWindow_width: mainWindow.width
+        property alias mainWindow_height: mainWindow.height
+
+        fileName: "./smfBox_Settings.ini"
+    }
 
     GridLayout {
         anchors.top: parent.top
@@ -93,6 +104,7 @@ Pane {
 
                 Pane {
                     NISettingsView {
+                        id: niSettings
                         width: parent.width
                         height: parent.height
                     }
@@ -131,6 +143,7 @@ Pane {
             Material.elevation: 6
 
             AcquisitionSettingsView {
+                id: acquisitionSettings
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 anchors.left: parent.left
@@ -149,6 +162,7 @@ Pane {
             Material.elevation: 6
 
             LaserDutyCyclesView {
+                id: laserDutyCycles
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 anchors.left: parent.left
@@ -167,6 +181,7 @@ Pane {
             Material.elevation: 6
 
             SaveSettingsView {
+                id: saveSettings
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 anchors.left: parent.left

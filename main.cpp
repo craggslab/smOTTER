@@ -14,6 +14,11 @@ int main(int argc, char *argv[])
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QApplication app(argc, argv);
 
+
+    app.setApplicationName("smfBox Open Acquisition");
+    app.setOrganizationName("University of Sheffield, Craggs Lab");
+    app.setOrganizationDomain("craggs-lab.com");
+
     QQuickStyle::setStyle("Material");
 
     QQuickView viewer;

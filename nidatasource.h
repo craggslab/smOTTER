@@ -23,8 +23,10 @@ class NIDataSource : public QObject
     Q_PROPERTY(QStringList counters READ counters NOTIFY countersChanged)
     Q_PROPERTY(QStringList counterLines READ counterLines NOTIFY counterLinesChanged)
     Q_PROPERTY(QStringList timebases READ timebases NOTIFY timebasesChanged)
+
 public:
     explicit NIDataSource(QQuickView *appViewer, QObject *parent = nullptr);
+
 
     const QStringList availableDevices() const;
     const QStringList digitalOutLines() const;
@@ -32,16 +34,33 @@ public:
     const QStringList counterLines() const;
     const QStringList timebases() const;
 
+
+
 signals:
     void availableDevicesChanged();
     void digitalOutLinesChanged();
     void countersChanged();
     void counterLinesChanged();
     void timebasesChanged();
+    void sendValues();
 
 public slots:
     void updateAvailableDevices();
     void setCurrentDevice(const QString& devName);
+
+    void setDonorLaserPin(const QString& pin);
+    void setAcceptorLaserPin(const QString& pin);
+    void setDonorDetectorCounter(const QString& pin);
+    void setAcceptorDetectorCounter(const QString& pin);
+    void setDonorDetectorPin(const QString& pin);
+    void setAcceptorDetectorPin(const QString& pin);
+    void setDonorDetectorGate(const QString& pin);
+    void setAcceptorDetectorGate(const QString& pin);
+    void setTimebase(const QString& pin);
+    void setLaserControlResolution(quint32 res);
+
+    bool startAcquisition();
+    bool stopAcquisition();
 
 private:
 

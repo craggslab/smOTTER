@@ -93,10 +93,14 @@ GridLayout {
 
                 Button {
                     text: qsTr("START")
+
+                    onClicked: dataSource.startAcquisition()
                 }
 
                 Button {
                     text: qsTr("STOP")
+
+                    onClicked: dataSource.stopAcquisition()
                 }
             }
 
