@@ -92,12 +92,19 @@ void NIDataSource::setAcceptorDetectorPin(const QString& pin) { m_device.setAcce
 void NIDataSource::setDonorDetectorGate(const QString& pin) { m_device.setDonorDetectorGate(pin.toStdString()); }
 void NIDataSource::setAcceptorDetectorGate(const QString& pin) { m_device.setAcceptorDetectorGate(pin.toStdString()); }
 void NIDataSource::setTimebase(const QString& pin) { m_device.setTimebase(pin.toStdString()); }
-void NIDataSource::setLaserControlResolution(quint32 res) {
-    qDebug() << "Set Laser Control Resolution called with:" << res;
-    m_device.setLaserControlResolution(std::chrono::microseconds(res));
-}
+void NIDataSource::setLaserControlResolution(quint32 res) { m_device.setLaserControlResolution(std::chrono::nanoseconds(res)); }
 
-bool NIDataSource::startAcquisition() {
+void NIDataSource::setAlexPeriod(quint32 micros) { m_device.setAlexPeriod(std::chrono::microseconds(micros)); }
+void NIDataSource::setDonorLaserOffPercentage(quint8 percentage) { m_device.setDonorLaserOffPercentage(percentage); }
+void NIDataSource::setDonorLaserOnPercentage(quint8 percentage) { m_device.setDonorLaserOnPercentage(percentage); }
+void NIDataSource::setAcceptorLaserOffPercentage(quint8 percentage) { m_device.setAcceptorLaserOffPercentage(percentage); }
+void NIDataSource::setAcceptorLaserOnPercentage(quint8 percentage) { m_device.setAcceptorLaserOnPercentage(percentage); }
+void NIDataSource::setExperimentLength(quint32 minutes) { m_device.setExperimentLength(std::chrono::minutes(minutes)); }
+
+bool NIDataSource::isRunning() { return m_device.isRunning(); }
+
+bool NIDataSource::startAcquisition()
+{
     auto res = m_device.prime();
 
     if (res.has_value())

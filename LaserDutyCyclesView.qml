@@ -19,8 +19,15 @@ GridLayout {
     }
 
     SpinBox {
+        id: donorOffTimeSpinBox
         Layout.alignment: Qt.AlignHCenter
+        editable: true
+
+        onValueChanged: dataSource.setDonorLaserOffPercentage(value)
+
         value: 0
+        from: 0
+        to: 100 - donorOnTimeSpinBox.value
     }
 
     Label {
@@ -30,14 +37,28 @@ GridLayout {
     }
 
     SpinBox {
+        id: acceptorOffTimeSpinBox
         Layout.alignment: Qt.AlignHCenter
+        editable: true
+
+        onValueChanged: dataSource.setAcceptorLaserOffPercentage(value)
+
         value: 50
+        from: 0
+        to: 100 - acceptorOnTimeSpinBox.value
     }
 
 
     SpinBox {
+        id: donorOnTimeSpinBox
         Layout.alignment: Qt.AlignHCenter
+        editable: true
+
+        onValueChanged: dataSource.setDonorLaserOnPercentage(value)
+
         value: 45
+        from: 0
+        to: 100 - donorOffTimeSpinBox.value
     }
 
     Label {
@@ -47,14 +68,22 @@ GridLayout {
     }
 
     SpinBox {
+        id: acceptorOnTimeSpinBox
         Layout.alignment: Qt.AlignHCenter
+        editable: true
+
+        onValueChanged: dataSource.setAcceptorLaserOnPercentage(value)
+
         value: 45
+        from: 0
+        to: 100 - acceptorOffTimeSpinBox.value
     }
 
 
     SpinBox {
         Layout.alignment: Qt.AlignHCenter
-        value: 55
+        enabled: false
+        value: 100 - donorOffTimeSpinBox.value - donorOnTimeSpinBox.value
     }
 
     Label {
@@ -65,7 +94,8 @@ GridLayout {
 
     SpinBox {
         Layout.alignment: Qt.AlignHCenter
-        value: 5
+        enabled: false
+        value: 100 - acceptorOffTimeSpinBox.value - acceptorOnTimeSpinBox.value
     }
 
     Label {
@@ -74,11 +104,30 @@ GridLayout {
     }
 
     SpinBox {
+        id: alexPeriodSpinBox
         Layout.alignment: Qt.AlignLeft
         Layout.columnSpan: 2
+
+        onValueChanged: dataSource.setAlexPeriod(value)
 
         from: 1
         to: 500
         value: 100
+        editable: true
+    }
+
+    function sendValuesToNICard()
+    {
+        dataSource.setAlexPeriod(alexPeriodSpinBox.value)
+        dataSource.setDonorLaserOffPercentage(donorOffTimeSpinBox.value)
+        dataSource.setDonorLaserOnPercentage(donorOnTimeSpinBox.value)
+        dataSource.setAcceptorLaserOffPercentage(acceptorOffTimeSpinBox.value)
+        dataSource.setAcceptorLaserOnPercentage(donorOnTimeSpinBox.value)
+    }
+
+
+    Connections {
+        target: dataSource
+        onSendValues: sendValuesToNICard()
     }
 }

@@ -59,6 +59,14 @@ public slots:
     void setTimebase(const QString& pin);
     void setLaserControlResolution(quint32 res);
 
+    void setAlexPeriod(quint32 micros);
+    void setDonorLaserOffPercentage(quint8 percentage);
+    void setDonorLaserOnPercentage(quint8 percentage);
+    void setAcceptorLaserOffPercentage(quint8 percentage);
+    void setAcceptorLaserOnPercentage(quint8 percentage);
+    void setExperimentLength(quint32 minutes);
+
+    bool isRunning();
     bool startAcquisition();
     bool stopAcquisition();
 

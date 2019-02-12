@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.12
 import QtQuick.Controls.Styles 1.4
 
 GridLayout {
+    property bool acquisitionRunning: false;
 
     columns: 2
     rows: 3
@@ -13,7 +14,11 @@ GridLayout {
     }
 
     SpinBox {
+        id: experimentLengthSpinBox
         editable: true
+
+        onValueChanged: dataSource.setExperimentLength(value)
+
         value: 60
         from: 1
         to: 1440
@@ -38,6 +43,7 @@ GridLayout {
         Layout.fillWidth: true
 
         ColumnLayout {
+
             anchors.top: parent.top
             anchors.bottom: parent.bottom
             anchors.left: parent.left
@@ -79,13 +85,30 @@ GridLayout {
             }
 
             ProgressBar {
+                id: experimentProgressBar
                 Layout.fillWidth: true
 
                 implicitHeight: 24
                 background.height: 24
                 contentItem.implicitHeight: 24
 
-                value: 0.3
+                value: refreshProgressBarTimer.timeSoFar / (experimentLengthSpinBox.value * 60000)
+            }
+
+            Timer {
+                id: refreshProgressBarTimer
+                interval: 100.0
+
+                property real timeSoFar: 0.0
+
+                repeat: true
+
+                onTriggered: {
+                   acquisitionRunning = dataSource.isRunning()
+                    if (acquisitionRunning) {
+                        timeSoFar += interval
+                    }
+                }
             }
 
             RowLayout {
@@ -94,18 +117,39 @@ GridLayout {
                 Button {
                     text: qsTr("START")
 
-                    onClicked: dataSource.startAcquisition()
+                    enabled: !acquisitionRunning;
+
+                    onClicked: {
+                        dataSource.startAcquisition()
+                        refreshProgressBarTimer.timeSoFar = 0.0
+                        refreshProgressBarTimer.start()
+                    }
                 }
 
                 Button {
                     text: qsTr("STOP")
 
-                    onClicked: dataSource.stopAcquisition()
+                    enabled: acquisitionRunning;
+
+                    onClicked: {
+                        dataSource.stopAcquisition()
+                        refreshProgressBarTimer.stop()
+                        refreshProgressBarTimer.timeSoFar = 0.0
+                        acquisitionRunning = false
+                    }
                 }
             }
 
         }
     }
 
+    function sendValuesToNICard() {
+        dataSource.setExperimentLength(experimentLengthSpinBox.value);
+    }
+
+    Connections {
+        target: dataSource
+        onSendValues: sendValuesToNICard();
+    }
 }
 

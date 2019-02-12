@@ -226,7 +226,7 @@ ScrollView {
             Layout.preferredWidth: implicitWidth
             Layout.alignment: Qt.AlignVCenter
             Layout.fillWidth: true
-            text: "Laser Control Resolution (us):"
+            text: "Laser Control Resolution (ns):"
         }
 
         SpinBox {
@@ -238,8 +238,8 @@ ScrollView {
             editable: true
 
             from: 1
-            to: 1000
-            value: 1
+            to: 1000000
+            value: 1000
 
             onValueChanged: dataSource.setLaserControlResolution(value)
         }
@@ -252,7 +252,7 @@ ScrollView {
         return 0
     }
 
-    function sendValuesChanged() {
+    function sendValuesToNICard() {
         dataSource.setDonorLaserPin(donorLaserPinComboBox.currentText)
         dataSource.setAcceptorLaserPin(acceptorLaserPinComboBox.currentText)
         dataSource.setDonorDetectorCounter(donorDetectorCounterComboBox.currentText)
@@ -267,6 +267,6 @@ ScrollView {
 
     Connections {
         target: dataSource
-        onSendValues: sendValuesChanged()
+        onSendValues: sendValuesToNICard()
     }
 }
