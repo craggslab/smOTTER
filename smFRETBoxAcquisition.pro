@@ -15,7 +15,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp \
     nicard.cpp \
-    nidatasource.cpp
+    nidatasource.cpp \
+    photon.cpp
 
 RESOURCES += qml.qrc
 
@@ -40,4 +41,5 @@ else:win32-g++: PRE_TARGETDEPS += 'C:/Program Files (x86)/National Instruments/S
 
 HEADERS += \
     nicard.h \
-    nidatasource.h
+    nidatasource.h \
+    photon.h

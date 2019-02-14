@@ -16,19 +16,14 @@ int32 CVICALLBACK AcquisitionFinishedCallback(TaskHandle, int32, void *callbackD
     return 0;
 }
 
-int32 CVICALLBACK AcquiredOneALEXPeriod(TaskHandle, int32, uInt32 nSamples, void *callbackData)
-{
-
-    std::cout << "ALEX PERIOD" << std::endl;
-
-    return 0;
-}
-
 NICard::NICard(const std::string& deviceName)
-    : stopMutex(std::make_unique<std::mutex>()),
+    : m_stopReadPhotons(false),
+      m_totalAcceptorPhotons(0),
+      m_totalDonorPhotons(0),
       m_deviceName(deviceName),
       m_triggerTask(nullptr),
-      m_counterTask(nullptr)
+      m_donorCounterTask(nullptr),
+      m_acceptorCounterTask(nullptr)
 {
 }
 
@@ -83,6 +78,9 @@ std::string NICard::getDeviceName() const
 {
     return m_deviceName;
 }
+
+uint64_t NICard::getTotalDonorPhotons() const { return m_totalDonorPhotons; }
+uint64_t NICard::getTotalAcceptorPhotons() const { return m_totalAcceptorPhotons; }
 
 std::vector<std::string> NICard::getNIStrings(int32(*strFunc)(const char *, char *, uInt32), std::optional<std::string> removeFromBegining) const
 {
@@ -173,8 +171,14 @@ std::optional<std::string> NICard::prime()
 
 std::optional<std::string> NICard::start()
 {
-    RET_IF_FAILED(DAQmxStartTask(m_counterTask));
+    RET_IF_FAILED(DAQmxStartTask(m_donorCounterTask));
+    RET_IF_FAILED(DAQmxStartTask(m_acceptorCounterTask));
     RET_IF_FAILED(DAQmxStartTask(m_triggerTask));
+
+    m_totalDonorPhotons = 0;
+    m_totalAcceptorPhotons = 0;
+    m_stopReadPhotons = false;
+    m_readPhotonsResult = std::async(std::launch::async, &NICard::readPhotons, this);
 
     m_running = true;
     return std::nullopt;
@@ -182,12 +186,30 @@ std::optional<std::string> NICard::start()
 
 std::optional<std::string> NICard::stop()
 {
-    std::lock_guard guard(*stopMutex);
+    std::lock_guard guard(stopMutex);
+
+    m_stopReadPhotons = true;
+
+    std::optional<std::string> readPhotonsResult = std::nullopt;
+    if (m_readPhotonsResult.valid())
+        readPhotonsResult = m_readPhotonsResult.get();
+    else
+        readPhotonsResult = std::make_optional("Could not retrieve result of read photons thread!");
 
     clearTasks();
 
     m_running = false;
-    return clearTriggers();
+
+    auto clearTriggersRes = clearTriggers();
+
+    if (clearTriggersRes.has_value() && readPhotonsResult.has_value())
+        return std::make_optional(clearTriggersRes.value() + readPhotonsResult.value());
+    else if (clearTriggersRes.has_value())
+        return clearTriggersRes;
+    else if (readPhotonsResult.has_value())
+        return readPhotonsResult;
+    else
+        return std::nullopt;
 }
 
 std::optional<std::string> NICard::checkNIDAQError(int32 error)
@@ -242,6 +264,10 @@ std::optional<std::string> NICard::setupTriggers()
 
     RET_IF_FAILED(DAQmxWriteDigitalLines(m_triggerTask, static_cast<int32>(traceSize), false, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, DOValues.data(), nullptr, nullptr));
 
+    float64 delay;
+    RET_IF_FAILED(DAQmxGetStartTrigDelay(m_triggerTask, &delay));
+    m_digitalOutputDelay = static_cast<uInt32>(delay + 1);
+
     return std::nullopt;
 }
 
@@ -268,24 +294,26 @@ std::optional<std::string> NICard::setupCounters()
         return std::make_optional("Could not recognise timebase unit (could not find Hz)!");
     }
 
+    RET_IF_FAILED(DAQmxCreateTask("Donor Photon Counter", &m_donorCounterTask));
+    RET_IF_FAILED(DAQmxCreateTask("Acceptor Counter Task", &m_acceptorCounterTask));
 
-    RET_IF_FAILED(DAQmxCreateTask("Photon Counters", &m_counterTask));
+    RET_IF_FAILED(DAQmxCreateCICountEdgesChan(m_donorCounterTask, (m_deviceName + "/" + m_donorDetectorCounter).c_str(), "Donor Photon Counter", DAQmx_Val_Rising, 0, DAQmx_Val_CountUp));
+    RET_IF_FAILED(DAQmxCreateCICountEdgesChan(m_acceptorCounterTask, (m_deviceName + "/" + m_acceptorDetectorCounter).c_str(), "Acceptor Photon Counter", DAQmx_Val_Rising, 0, DAQmx_Val_CountUp));
 
-    RET_IF_FAILED(DAQmxCreateCICountEdgesChan(m_counterTask, (m_deviceName + "/" + m_donorDetectorCounter).c_str(), "Donor Detector Counter", DAQmx_Val_Rising, 0, DAQmx_Val_CountUp));
-    //RET_IF_FAILED(DAQmxCreateCICountEdgesChan(m_counterTask, (m_deviceName + "/" + m_acceptorDetectorCounter).c_str(), "Acceptor Detector Counter", DAQmx_Val_Rising, 0, DAQmx_Val_CountUp));
+    RET_IF_FAILED(DAQmxCfgSampClkTiming(m_donorCounterTask, ("/" + m_deviceName + "/" + m_donorDetectorPin).c_str(), counterRate, DAQmx_Val_Rising, DAQmx_Val_ContSamps, 5000));
+    RET_IF_FAILED(DAQmxCfgSampClkTiming(m_acceptorCounterTask, ("/" + m_deviceName + "/" + m_acceptorDetectorPin).c_str(), counterRate, DAQmx_Val_Rising, DAQmx_Val_ContSamps, 5000));
 
-    RET_IF_FAILED(DAQmxSetCICountEdgesTerm(m_counterTask, "Donor Detector Counter", ("/" + m_deviceName + "/" + m_donorDetectorPin).c_str()));
-    //RET_IF_FAILED(DAQmxSetCICountEdgesGateTerm())
+    RET_IF_FAILED(DAQmxSetCICountEdgesTerm(m_donorCounterTask, "Donor Photon Counter", ("/" + m_deviceName + "/" + m_timebase).c_str()));
+    RET_IF_FAILED(DAQmxSetCICountEdgesTerm(m_acceptorCounterTask, "Acceptor Photon Counter", ("/" + m_deviceName + "/" + m_timebase).c_str()));
 
-    uInt64 tmp = 100'000'000;
-    RET_IF_FAILED(DAQmxCfgSampClkTiming(m_counterTask, m_timebase.c_str(), counterRate, DAQmx_Val_Rising, DAQmx_Val_FiniteSamps, tmp));
+    RET_IF_FAILED(DAQmxSetArmStartTrigType(m_donorCounterTask, DAQmx_Val_DigEdge));
+    RET_IF_FAILED(DAQmxSetArmStartTrigType(m_acceptorCounterTask, DAQmx_Val_DigEdge));
 
-    RET_IF_FAILED(DAQmxRegisterEveryNSamplesEvent(m_counterTask, DAQmx_Val_Acquired_Into_Buffer, 10U, 0, &AcquiredOneALEXPeriod, this));
+    RET_IF_FAILED(DAQmxSetDigEdgeArmStartTrigSrc(m_donorCounterTask, ("/" + m_deviceName + "/do/StartTrigger").c_str()));
+    RET_IF_FAILED(DAQmxSetDigEdgeArmStartTrigSrc(m_acceptorCounterTask, ("/" + m_deviceName + "/do/StartTrigger").c_str()));
 
-    /*RET_IF_FAILED(DAQmxSetArmStartTrigType(m_counterTask, DAQmx_Val_DigEdge));
-    RET_IF_FAILED(DAQmxSetDigEdgeArmStartTrigSrc(m_counterTask, ("/" + m_deviceName + "/do/StartTrigger").c_str()));
-    RET_IF_FAILED(DAQmxSetDigEdgeArmStartTrigEdge(m_counterTask, DAQmx_Val_Rising));*/
-
+    RET_IF_FAILED(DAQmxSetDigEdgeArmStartTrigEdge(m_donorCounterTask, DAQmx_Val_Rising));
+    RET_IF_FAILED(DAQmxSetDigEdgeArmStartTrigEdge(m_acceptorCounterTask, DAQmx_Val_Rising));
 
     return std::nullopt;
 }
@@ -325,11 +353,18 @@ void NICard::clearTasks()
         m_triggerTask = nullptr;
     }
 
-    if (m_counterTask != nullptr)
+    if (m_donorCounterTask != nullptr)
     {
-        DAQmxStopTask(m_counterTask);
-        DAQmxClearTask(m_counterTask);
-        m_counterTask = nullptr;
+        DAQmxStopTask(m_donorCounterTask);
+        DAQmxClearTask(m_donorCounterTask);
+        m_donorCounterTask = nullptr;
+    }
+
+    if (m_acceptorCounterTask != nullptr)
+    {
+        DAQmxStopTask(m_acceptorCounterTask);
+        DAQmxClearTask(m_acceptorCounterTask);
+        m_acceptorCounterTask = nullptr;
     }
 }
 
@@ -363,4 +398,91 @@ void NICard::DutyCycle::updateTimings()
     onePercent = period / 100;
     offEndTime = onePercent * off_percent;
     onEndTime = offEndTime + onePercent * on_percent;
+}
+
+std::optional<std::string> NICard::readPhotonsIntoBuffer(TaskHandle counterTask, std::vector<uInt32> &buff)
+{
+    uInt32 nPhotons = 0;
+    RET_IF_FAILED(DAQmxGetReadAvailSampPerChan(counterTask, &nPhotons));
+
+    buff.resize(nPhotons);
+    if (nPhotons == 0)
+        return std::nullopt;
+
+    RET_IF_FAILED(DAQmxReadCounterU32(counterTask, static_cast<int32>(nPhotons), DAQmx_Val_WaitInfinitely, buff.data(), static_cast<uInt32>(buff.size()), nullptr, nullptr));
+
+    return std::nullopt;
+}
+
+std::optional<std::string> NICard::analysePhotons(const std::vector<uInt32> &buffer, uInt32 &previousPhotonArrival, uInt64 &offset, FluorophoreType detector)
+{
+    for (auto photonArrivalTime: buffer)
+    {
+        if (previousPhotonArrival > photonArrivalTime)
+            offset += 0x1'0000'0000;
+
+        previousPhotonArrival = photonArrivalTime;
+
+        auto time = (offset + photonArrivalTime - m_digitalOutputDelay)*10ns;
+        auto timeRelativeToAlex = time % m_alexPeriod;
+
+        if (detector == FluorophoreType::Donor)
+        {
+            if (m_donorLaserDutyCycle.isLaserOn(timeRelativeToAlex))
+                std::cout << "DD Photon";
+            else
+                continue;
+
+            m_totalDonorPhotons++;
+        }
+        else if (detector == FluorophoreType::Acceptor)
+        {
+            if (m_donorLaserDutyCycle.isLaserOn(timeRelativeToAlex))
+                std::cout << "DA Photon";
+            else if (m_acceptorLaserDutyCycle.isLaserOn(timeRelativeToAlex))
+                std::cout << "AA Photon";
+            else
+                continue;
+
+            m_totalAcceptorPhotons++;
+        }
+
+        std::cout << "@ " << time.count() << "ns" << std::endl;
+    }
+
+    return std::nullopt;
+}
+
+std::optional<std::string> NICard::readPhotons()
+{
+    uInt32 previousDonorArrivalTime = 0, previousAcceptorArrivalTime = 0;
+    uInt64 donorOffsetValue = 0, acceptorOffsetValue = 0;
+
+    std::vector<uInt32> donorBuffer, acceptorBuffer;
+
+    while (!m_stopReadPhotons)
+    {
+        if (auto err = readPhotonsIntoBuffer(m_donorCounterTask, donorBuffer); err.has_value())
+            return err;
+
+        if (auto err = readPhotonsIntoBuffer(m_acceptorCounterTask, acceptorBuffer); err.has_value())
+            return err;
+
+        if (donorBuffer.size())
+        {
+            std::cout << "Donor buffer size: " << donorBuffer.size() << std::endl;
+            analysePhotons(donorBuffer, previousDonorArrivalTime, donorOffsetValue, FluorophoreType::Donor);
+        }
+
+        if (acceptorBuffer.size())
+        {
+            std::cout << "Acceptor buffer size: " << acceptorBuffer.size() << std::endl;
+            analysePhotons(acceptorBuffer, previousAcceptorArrivalTime, acceptorOffsetValue, FluorophoreType::Acceptor);
+        }
+
+        if (donorBuffer.size() || acceptorBuffer.size())
+            std::cout << std::endl;
+    }
+
+    return std::nullopt;
 }

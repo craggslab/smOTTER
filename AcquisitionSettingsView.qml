@@ -63,6 +63,7 @@ GridLayout {
                 }
 
                 Label {
+                    id: totalDonorPhotonsLabel
                     text: qsTr("0")
                 }
 
@@ -76,6 +77,7 @@ GridLayout {
                 }
 
                 Label {
+                    id: totalAcceptorPhotonsLabel
                     text: qsTr("0")
                 }
             }
@@ -107,6 +109,8 @@ GridLayout {
                    acquisitionRunning = dataSource.isRunning()
                     if (acquisitionRunning) {
                         timeSoFar += interval
+                        totalDonorPhotonsLabel.text = dataSource.getTotalDonorPhotons();
+                        totalAcceptorPhotonsLabel.text = dataSource.getTotalAcceptorPhotons();
                     }
                 }
             }

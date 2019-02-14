@@ -23,7 +23,6 @@ class NIDataSource : public QObject
     Q_PROPERTY(QStringList counters READ counters NOTIFY countersChanged)
     Q_PROPERTY(QStringList counterLines READ counterLines NOTIFY counterLinesChanged)
     Q_PROPERTY(QStringList timebases READ timebases NOTIFY timebasesChanged)
-
 public:
     explicit NIDataSource(QQuickView *appViewer, QObject *parent = nullptr);
 
@@ -70,12 +69,15 @@ public slots:
     bool startAcquisition();
     bool stopAcquisition();
 
+    quint64 getTotalDonorPhotons();
+    quint64 getTotalAcceptorPhotons();
+
 private:
 
     QStringList m_availableDevices;
     QQuickView *m_appViewer;
 
-    NICard m_device;
+    std::unique_ptr<NICard> m_device;
 };
 
 #endif // NIDATASOURCE_H

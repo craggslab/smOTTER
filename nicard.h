@@ -6,12 +6,19 @@
 #include <optional>
 #include <chrono>
 #include <mutex>
+#include <future>
+#include <atomic>
 
 #include <NIDAQmx.h>
 
 class NICard
 {
 public:
+    enum class FluorophoreType {
+        Donor,
+        Acceptor
+    };
+
     struct DutyCycle {
         void setOffPercent(uint8_t percent);
         void setOnPercent(uint8_t percent);
@@ -37,6 +44,8 @@ public:
     std::vector<std::string> getCounterLines() const;
     std::vector<std::string> getTimebases() const;
     std::string getDeviceName() const;
+    uint64_t getTotalDonorPhotons() const;
+    uint64_t getTotalAcceptorPhotons() const;
 
     /* NIDAQ SETTINGS */
     void setDonorLaserPin(std::string pin);
@@ -71,13 +80,22 @@ private:
     static std::vector<std::string> splitNIStrings(std::vector<char>& niStrings, std::optional<std::string> removeFromBegining = std::nullopt);
     static std::optional<std::string> checkNIDAQError(int32 error);
 
+    std::atomic<bool> m_stopReadPhotons;
+    std::future<std::optional<std::string>> m_readPhotonsResult;
+    std::atomic<uint64_t> m_totalAcceptorPhotons;
+    std::atomic<uint64_t> m_totalDonorPhotons;
+    std::optional<std::string> readPhotonsIntoBuffer(TaskHandle counterTask, std::vector<uInt32>& buff);
+    std::optional<std::string> analysePhotons(const std::vector<uInt32>& buffer, uInt32& previousValue, uInt64& offset, FluorophoreType detector);
+    std::optional<std::string> readPhotons();
+
+
     std::optional<std::string> setupTriggers();
     std::optional<std::string> setupCounters();
 
     std::optional<std::string> clearTriggers();
     void clearTasks();
 
-    std::unique_ptr<std::mutex> stopMutex;
+    std::mutex stopMutex;
 
     std::string m_deviceName;
     std::string m_donorLaserPin;
@@ -97,7 +115,10 @@ private:
     std::chrono::minutes m_experimentLength;
 
     TaskHandle m_triggerTask;
-    TaskHandle m_counterTask;
+    uInt32 m_digitalOutputDelay;
+
+    TaskHandle m_donorCounterTask;
+    TaskHandle m_acceptorCounterTask;
 
     bool m_running;
 };
