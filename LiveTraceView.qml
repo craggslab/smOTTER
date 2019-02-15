@@ -51,6 +51,9 @@ ChartView {
         interval: 1
         running: true
         repeat: true
-        onTriggered: {}
+
+        onTriggered: {
+            dataSource.updateLiveTrace(countsDD, countsAA, countsDA, 0.0)
+        }
     }
 }

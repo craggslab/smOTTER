@@ -15,7 +15,7 @@ ScrollView {
     GridLayout {
         width: Math.max(implicitWidth, scrollView.availableWidth - sbWidth - 10)
         id: contentGrid
-        rows: 7
+        rows: 8
         columns: 2
 
         columnSpacing: 10
@@ -243,6 +243,27 @@ ScrollView {
 
             onValueChanged: dataSource.setLaserControlResolution(value)
         }
+
+        Label {
+            Layout.preferredWidth: implicitWidth
+            Layout.alignment: Qt.AlignVCenter
+            Layout.fillWidth: true
+            text: "Photon Timestamp Adjustment"
+        }
+
+        SpinBox {
+            id: timestampAdjustmentSpinBox
+            Layout.alignment: Qt.AlignVCenter
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+
+            editable: true
+            from: 0
+            to: 99
+            value: 3
+
+            onValueChanged: dataSource.setTimestampAdjustment(value)
+        }
     }
 
     function findIndexOfDefault(model, dflt) {
@@ -263,6 +284,7 @@ ScrollView {
         dataSource.setAcceptorDetectorGate(acceptorDetectorGateComboBox.currentText)
         dataSource.setTimebase(timebaseComboBox.currentText)
         dataSource.setLaserControlResolution(laserControlResSpinBox.value)
+        dataSource.setTimestampAdjustment(timestampAdjustmentSpinBox.value)
     }
 
     Connections {

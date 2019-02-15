@@ -23,7 +23,8 @@ NICard::NICard(const std::string& deviceName)
       m_deviceName(deviceName),
       m_triggerTask(nullptr),
       m_donorCounterTask(nullptr),
-      m_acceptorCounterTask(nullptr)
+      m_acceptorCounterTask(nullptr),
+      m_running(false)
 {
 }
 
@@ -137,6 +138,7 @@ void NICard::setDonorDetectorGate(std::string pin) { m_donorDetectorGate = std::
 void NICard::setAcceptorDetectorGate(std::string pin) { m_acceptorDetectorGate = std::move(pin); clearTriggers(); }
 void NICard::setTimebase(std::string pin) { m_timebase = std::move(pin); }
 void NICard::setLaserControlResolution(std::chrono::nanoseconds res) { m_laserControlResolution = std::move(res); }
+void NICard::setTimestampAdjustment(uint64_t val) { m_timestampAdjustment = val; }
 
 void NICard::setAlexPeriod(std::chrono::microseconds micros)
 {
@@ -186,7 +188,7 @@ std::optional<std::string> NICard::start()
 
 std::optional<std::string> NICard::stop()
 {
-    std::lock_guard guard(stopMutex);
+    std::lock_guard guard(m_stopAcquisitionMutex);
 
     m_stopReadPhotons = true;
 
@@ -266,7 +268,7 @@ std::optional<std::string> NICard::setupTriggers()
 
     float64 delay;
     RET_IF_FAILED(DAQmxGetStartTrigDelay(m_triggerTask, &delay));
-    m_digitalOutputDelay = static_cast<uInt32>(delay + 1);
+    m_digitalOutputDelay = static_cast<uInt32>(delay + m_timestampAdjustment);
 
     return std::nullopt;
 }
@@ -314,6 +316,9 @@ std::optional<std::string> NICard::setupCounters()
 
     RET_IF_FAILED(DAQmxSetDigEdgeArmStartTrigEdge(m_donorCounterTask, DAQmx_Val_Rising));
     RET_IF_FAILED(DAQmxSetDigEdgeArmStartTrigEdge(m_acceptorCounterTask, DAQmx_Val_Rising));
+
+    RET_IF_FAILED(DAQmxSetSampClkOverrunBehavior(m_donorCounterTask, DAQmx_Val_IgnoreOverruns));
+    RET_IF_FAILED(DAQmxSetSampClkOverrunBehavior(m_acceptorCounterTask, DAQmx_Val_IgnoreOverruns));
 
     return std::nullopt;
 }
@@ -414,7 +419,7 @@ std::optional<std::string> NICard::readPhotonsIntoBuffer(TaskHandle counterTask,
     return std::nullopt;
 }
 
-std::optional<std::string> NICard::analysePhotons(const std::vector<uInt32> &buffer, uInt32 &previousPhotonArrival, uInt64 &offset, FluorophoreType detector)
+std::optional<std::string> NICard::analysePhotons(const std::vector<uInt32> &buffer, uInt32 &previousPhotonArrival, uInt64 &offset, FluorophoreType detector, std::list<Photon>& newPhotons)
 {
     for (auto photonArrivalTime: buffer)
     {
@@ -429,7 +434,7 @@ std::optional<std::string> NICard::analysePhotons(const std::vector<uInt32> &buf
         if (detector == FluorophoreType::Donor)
         {
             if (m_donorLaserDutyCycle.isLaserOn(timeRelativeToAlex))
-                std::cout << "DD Photon";
+                newPhotons.emplace_back(time, PhotonType::DD);
             else
                 continue;
 
@@ -438,16 +443,14 @@ std::optional<std::string> NICard::analysePhotons(const std::vector<uInt32> &buf
         else if (detector == FluorophoreType::Acceptor)
         {
             if (m_donorLaserDutyCycle.isLaserOn(timeRelativeToAlex))
-                std::cout << "DA Photon";
+                newPhotons.emplace_back(time, PhotonType::DA);
             else if (m_acceptorLaserDutyCycle.isLaserOn(timeRelativeToAlex))
-                std::cout << "AA Photon";
+                newPhotons.emplace_back(time, PhotonType::AA);
             else
                 continue;
 
             m_totalAcceptorPhotons++;
         }
-
-        std::cout << "@ " << time.count() << "ns" << std::endl;
     }
 
     return std::nullopt;
@@ -460,6 +463,7 @@ std::optional<std::string> NICard::readPhotons()
 
     std::vector<uInt32> donorBuffer, acceptorBuffer;
 
+    std::list<Photon> newPhotons;
     while (!m_stopReadPhotons)
     {
         if (auto err = readPhotonsIntoBuffer(m_donorCounterTask, donorBuffer); err.has_value())
@@ -469,20 +473,32 @@ std::optional<std::string> NICard::readPhotons()
             return err;
 
         if (donorBuffer.size())
-        {
-            std::cout << "Donor buffer size: " << donorBuffer.size() << std::endl;
-            analysePhotons(donorBuffer, previousDonorArrivalTime, donorOffsetValue, FluorophoreType::Donor);
-        }
+            analysePhotons(donorBuffer, previousDonorArrivalTime, donorOffsetValue, FluorophoreType::Donor, newPhotons);
 
         if (acceptorBuffer.size())
-        {
-            std::cout << "Acceptor buffer size: " << acceptorBuffer.size() << std::endl;
-            analysePhotons(acceptorBuffer, previousAcceptorArrivalTime, acceptorOffsetValue, FluorophoreType::Acceptor);
-        }
+            analysePhotons(acceptorBuffer, previousAcceptorArrivalTime, acceptorOffsetValue, FluorophoreType::Acceptor, newPhotons);
 
-        if (donorBuffer.size() || acceptorBuffer.size())
-            std::cout << std::endl;
+        if (newPhotons.size() > 0)
+        {
+            // try to lock for 10 clock cycles and then continue readout
+            std::unique_lock lock(m_detectedPhotonsMutex, 100ns);
+            if (lock.owns_lock())
+                m_detectedPhotons.splice(m_detectedPhotons.cend(), newPhotons);
+        }
     }
 
     return std::nullopt;
+}
+
+std::unique_lock<std::timed_mutex> NICard::getPhotonLockObject()
+{
+    return std::unique_lock(m_detectedPhotonsMutex, std::defer_lock);
+}
+
+const std::list<Photon>& NICard::getCurrentPhotons(const std::unique_lock<std::timed_mutex>& lock)
+{
+    if (!lock.owns_lock())
+        throw std::invalid_argument("Lock object does not have lock!");
+
+    return m_detectedPhotons;
 }

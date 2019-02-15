@@ -5,7 +5,10 @@
 #include <QAbstractSeries>
 #include <QStringList>
 #include <QString>
+#include <mutex>
+#include <optional>
 
+#include "photon.h"
 #include "nicard.h"
 
 QT_BEGIN_NAMESPACE
@@ -57,6 +60,7 @@ public slots:
     void setAcceptorDetectorGate(const QString& pin);
     void setTimebase(const QString& pin);
     void setLaserControlResolution(quint32 res);
+    void setTimestampAdjustment(quint64 val);
 
     void setAlexPeriod(quint32 micros);
     void setDonorLaserOffPercentage(quint8 percentage);
@@ -72,12 +76,13 @@ public slots:
     quint64 getTotalDonorPhotons();
     quint64 getTotalAcceptorPhotons();
 
+    void updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *AASeries, QAbstractSeries *DASeries, double t);
 private:
-
     QStringList m_availableDevices;
     QQuickView *m_appViewer;
 
     std::unique_ptr<NICard> m_device;
+    std::optional<std::list<Photon>::const_iterator> m_lastPhoton;
 };
 
 #endif // NIDATASOURCE_H

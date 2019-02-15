@@ -2,6 +2,8 @@
 #define PHOTON_H
 
 #include <cstdint>
+#include <list>
+#include <chrono>
 
 enum class PhotonType {
     DD,
@@ -11,7 +13,12 @@ enum class PhotonType {
 
 struct Photon
 {
-    uint64_t timeStamp;
+    Photon(std::chrono::nanoseconds ts, PhotonType phType)
+    {
+        timeStamp = ts;
+        type = phType;
+    }
+    std::chrono::nanoseconds timeStamp;
     PhotonType type;
 };
 

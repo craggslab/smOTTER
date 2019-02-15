@@ -8,6 +8,7 @@
 #include <mutex>
 #include <future>
 #include <atomic>
+#include <photon.h>
 
 #include <NIDAQmx.h>
 
@@ -39,6 +40,7 @@ public:
 
     NICard(const std::string& deviceName = "");
 
+    static std::vector<std::string> getAvailableDevices();
     std::vector<std::string> getDigitalOutLines() const;
     std::vector<std::string> getCounters() const;
     std::vector<std::string> getCounterLines() const;
@@ -58,6 +60,7 @@ public:
     void setAcceptorDetectorGate(std::string pin);
     void setTimebase(std::string pin);
     void setLaserControlResolution(std::chrono::nanoseconds res);
+    void setTimestampAdjustment(uint64_t val);
 
     /* Acquisition Settings */
     void setAlexPeriod(std::chrono::microseconds micros);
@@ -73,21 +76,17 @@ public:
     std::optional<std::string> start();
     std::optional<std::string> stop();
 
-    static std::vector<std::string> getAvailableDevices();
+    std::unique_lock<std::timed_mutex> getPhotonLockObject();
+    const std::list<Photon>& getCurrentPhotons(const std::unique_lock<std::timed_mutex>& lock);
 
 private:
     std::vector<std::string> getNIStrings(int32(*strFunc)(const char *, char *, uInt32), std::optional<std::string> removeFromBegining = std::nullopt) const;
     static std::vector<std::string> splitNIStrings(std::vector<char>& niStrings, std::optional<std::string> removeFromBegining = std::nullopt);
     static std::optional<std::string> checkNIDAQError(int32 error);
 
-    std::atomic<bool> m_stopReadPhotons;
-    std::future<std::optional<std::string>> m_readPhotonsResult;
-    std::atomic<uint64_t> m_totalAcceptorPhotons;
-    std::atomic<uint64_t> m_totalDonorPhotons;
     std::optional<std::string> readPhotonsIntoBuffer(TaskHandle counterTask, std::vector<uInt32>& buff);
-    std::optional<std::string> analysePhotons(const std::vector<uInt32>& buffer, uInt32& previousValue, uInt64& offset, FluorophoreType detector);
+    std::optional<std::string> analysePhotons(const std::vector<uInt32>& buffer, uInt32& previousValue, uInt64& offset, FluorophoreType detector, std::list<Photon>& newPhotons);
     std::optional<std::string> readPhotons();
-
 
     std::optional<std::string> setupTriggers();
     std::optional<std::string> setupCounters();
@@ -95,7 +94,7 @@ private:
     std::optional<std::string> clearTriggers();
     void clearTasks();
 
-    std::mutex stopMutex;
+    std::mutex m_stopAcquisitionMutex;
 
     std::string m_deviceName;
     std::string m_donorLaserPin;
@@ -107,6 +106,7 @@ private:
     std::string m_donorDetectorGate;
     std::string m_acceptorDetectorGate;
     std::string m_timebase;
+    uint64_t m_timestampAdjustment;
     std::chrono::nanoseconds m_laserControlResolution;
 
     std::chrono::microseconds m_alexPeriod;
@@ -121,6 +121,12 @@ private:
     TaskHandle m_acceptorCounterTask;
 
     bool m_running;
+    std::atomic<bool> m_stopReadPhotons;
+    std::future<std::optional<std::string>> m_readPhotonsResult;
+    std::atomic<uint64_t> m_totalAcceptorPhotons;
+    std::atomic<uint64_t> m_totalDonorPhotons;
+    std::timed_mutex m_detectedPhotonsMutex;
+    std::list<Photon> m_detectedPhotons;
 };
 
 #endif // NICARD_H
