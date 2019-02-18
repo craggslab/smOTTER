@@ -7,6 +7,7 @@
 #include <QString>
 #include <mutex>
 #include <optional>
+#include <chrono>
 
 #include "photon.h"
 #include "nicard.h"
@@ -76,7 +77,7 @@ public slots:
     quint64 getTotalDonorPhotons();
     quint64 getTotalAcceptorPhotons();
 
-    void updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *AASeries, QAbstractSeries *DASeries, double t);
+    void updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *AASeries, QAbstractSeries *DASeries, quint64 min_t, quint64 max_t);
 private:
     QStringList m_availableDevices;
     QQuickView *m_appViewer;

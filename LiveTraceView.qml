@@ -5,6 +5,8 @@ ChartView {
     animationOptions: ChartView.NoAnimation
     theme: ChartView.ChartThemeDark
 
+    property bool acquisitionRunning: false
+
     ValueAxis {
         id: axisY
         min: -50
@@ -24,7 +26,7 @@ ChartView {
         name: "DD"
         axisX: axisX
         axisY: axisY
-        color: "red"
+        color: "green"
         useOpenGL: true
     }
 
@@ -42,18 +44,40 @@ ChartView {
         name: "DA"
         axisX: axisX
         axisY: axisY
-        color: "green"
+        color: "red"
         useOpenGL: true
     }
 
     Timer {
         id: refreshTimer
-        interval: 1
-        running: true
+        interval: 40
+        running: acquisitionRunning
         repeat: true
 
+        property int count: 0
+
         onTriggered: {
-            dataSource.updateLiveTrace(countsDD, countsAA, countsDA, 0.0)
+            dataSource.updateLiveTrace(countsDD, countsAA, countsDA, axisX.min, count*interval)
+
+            if (count*interval > axisX.max)
+            {
+                axisX.min = axisX.max
+                axisX.max += 1000;
+            }
+            count++;
+        }
+
+        onRunningChanged: {
+            count = 0
+            if (running)
+            {
+                countsAA.clear()
+                countsDD.clear()
+                countsDA.clear()
+
+                axisX.min = 0
+                axisX.max = 1000;
+            }
         }
     }
 }

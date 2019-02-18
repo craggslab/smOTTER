@@ -11,6 +11,8 @@ QT_CHARTS_USE_NAMESPACE
 Q_DECLARE_METATYPE(QAbstractSeries*)
 Q_DECLARE_METATYPE(QAbstractAxis*)
 
+using namespace std::chrono_literals;
+
 NIDataSource::NIDataSource(QQuickView *appViewer, QObject *parent)
     : QObject(parent),
       m_appViewer(appViewer),
@@ -115,6 +117,8 @@ bool NIDataSource::isRunning() { return m_device->isRunning(); }
 
 bool NIDataSource::startAcquisition()
 {
+    m_lastPhoton = std::nullopt;
+
     auto res = m_device->prime();
 
     if (res.has_value())
@@ -130,6 +134,7 @@ bool NIDataSource::startAcquisition()
         return false;
     }
 
+
     return true;
 }
 
@@ -142,42 +147,55 @@ bool NIDataSource::stopAcquisition()
         return false;
     }
 
+
     return true;
 }
 
 quint64 NIDataSource::getTotalDonorPhotons() { return m_device->getTotalDonorPhotons(); }
 quint64 NIDataSource::getTotalAcceptorPhotons() { return m_device->getTotalAcceptorPhotons(); }
 
-void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *AASeries, QAbstractSeries *DASeries, double t)
+void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *AASeries, QAbstractSeries *DASeries, quint64 min_t, quint64 max_t)
 {
-    static double t_tmp = 0.0;
+    using namespace std::chrono;
 
     if (!m_device->isRunning())
         return;
 
+    auto DDTrace = static_cast<QXYSeries*>(DDSeries);
+    auto AATrace = static_cast<QXYSeries*>(AASeries);
+    auto DATrace = static_cast<QXYSeries*>(DASeries);
+
+    DDTrace->clear();
+    AATrace->clear();
+    DATrace->clear();
+
+    QVector<QPointF> DDPoints(static_cast<int>(max_t - min_t));
+    QVector<QPointF> AAPoints(static_cast<int>(max_t - min_t));
+    QVector<QPointF> DAPoints(static_cast<int>(max_t - min_t));
+
     auto lock = m_device->getPhotonLockObject();
     lock.lock();
 
-    auto first = m_lastPhoton.has_value() ? ++m_lastPhoton.value() : m_device->getCurrentPhotons(lock).cbegin();
-
-    auto photonCounts = std::reduce(first, m_device->getCurrentPhotons(lock).cend(), std::make_tuple(0ull, 0ull, 0ull), [](auto a, auto b) {
-        if (b.type == PhotonType::AA)
-            return std::make_tuple(std::get<0>(a)+1, std::get<1>(a), std::get<2>(a));
-        else if (b.type == PhotonType::DA)
-            return std::make_tuple(std::get<0>(a), std::get<1>(a)+1, std::get<2>(a));
-        else if (b.type == PhotonType::DD)
-            return std::make_tuple(std::get<0>(a), std::get<1>(a), std::get<2>(a)+1);
+    auto currentPhotons = m_device->getCurrentPhotons(lock); //kinda bypassing the lock mechanism....
+    for (auto t = min_t; t <= max_t; t++)
+    {
+        if (auto itr = currentPhotons.find(t); itr != currentPhotons.end())
+        {
+            DDPoints.push_back(QPointF(t, static_cast<double>(itr->second.nDD)));
+            AAPoints.push_back(QPointF(t, -static_cast<double>(itr->second.nAA)));
+            DAPoints.push_back(QPointF(t, -static_cast<double>(itr->second.nDA)));
+        }
         else
-            return std::make_tuple(std::get<0>(a), std::get<1>(a), std::get<2>(a));
-    } );
-
-    if (m_device->getCurrentPhotons(lock).cbegin() != m_device->getCurrentPhotons(lock).cend())
-        m_lastPhoton = std::make_optional(--m_device->getCurrentPhotons(lock).cend());
+        {
+            DDPoints.push_back(QPointF(t, 0));
+            AAPoints.push_back(QPointF(t, 0));
+            DAPoints.push_back(QPointF(t, 0));
+        }
+    }
 
     lock.unlock();
 
-    static_cast<QXYSeries*>(AASeries)->append(t_tmp, -static_cast<double>(std::get<0>(photonCounts)));
-    static_cast<QXYSeries*>(DASeries)->append(t_tmp, -static_cast<double>(std::get<1>(photonCounts)));
-    static_cast<QXYSeries*>(DDSeries)->append(t_tmp, std::get<2>(photonCounts));
-    t_tmp++;
+    DDTrace->replace(DDPoints);
+    AATrace->replace(AAPoints);
+    DATrace->replace(DAPoints);
 }

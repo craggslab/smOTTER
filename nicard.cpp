@@ -173,6 +173,11 @@ std::optional<std::string> NICard::prime()
 
 std::optional<std::string> NICard::start()
 {
+    {
+        std::lock_guard lock(m_detectedPhotonsMutex);
+        m_detectedPhotons.clear();
+    }
+
     RET_IF_FAILED(DAQmxStartTask(m_donorCounterTask));
     RET_IF_FAILED(DAQmxStartTask(m_acceptorCounterTask));
     RET_IF_FAILED(DAQmxStartTask(m_triggerTask));
@@ -419,8 +424,11 @@ std::optional<std::string> NICard::readPhotonsIntoBuffer(TaskHandle counterTask,
     return std::nullopt;
 }
 
-std::optional<std::string> NICard::analysePhotons(const std::vector<uInt32> &buffer, uInt32 &previousPhotonArrival, uInt64 &offset, FluorophoreType detector, std::list<Photon>& newPhotons)
+std::optional<std::string> NICard::analysePhotons(const std::vector<uInt32> &buffer, uInt32 &previousPhotonArrival, uInt64 &offset, FluorophoreType detector, std::unordered_map<uint64_t, PhotonBlock>& newPhotons)
 {
+    using namespace std::chrono;
+    using unsigned_ms = duration<uint64_t, std::ratio<1,1000>>;
+
     for (auto photonArrivalTime: buffer)
     {
         if (previousPhotonArrival > photonArrivalTime)
@@ -434,7 +442,7 @@ std::optional<std::string> NICard::analysePhotons(const std::vector<uInt32> &buf
         if (detector == FluorophoreType::Donor)
         {
             if (m_donorLaserDutyCycle.isLaserOn(timeRelativeToAlex))
-                newPhotons.emplace_back(time, PhotonType::DD);
+                newPhotons[duration_cast<unsigned_ms>(time).count()].addPhoton<PhotonType::DD>(time);
             else
                 continue;
 
@@ -443,9 +451,9 @@ std::optional<std::string> NICard::analysePhotons(const std::vector<uInt32> &buf
         else if (detector == FluorophoreType::Acceptor)
         {
             if (m_donorLaserDutyCycle.isLaserOn(timeRelativeToAlex))
-                newPhotons.emplace_back(time, PhotonType::DA);
+                newPhotons[duration_cast<unsigned_ms>(time).count()].addPhoton<PhotonType::DA>(time);
             else if (m_acceptorLaserDutyCycle.isLaserOn(timeRelativeToAlex))
-                newPhotons.emplace_back(time, PhotonType::AA);
+                newPhotons[duration_cast<unsigned_ms>(time).count()].addPhoton<PhotonType::AA>(time);
             else
                 continue;
 
@@ -463,7 +471,10 @@ std::optional<std::string> NICard::readPhotons()
 
     std::vector<uInt32> donorBuffer, acceptorBuffer;
 
-    std::list<Photon> newPhotons;
+    //auto photonComp = [](auto a, auto b) { return a.timeStamp > b.timeStamp; };
+
+    std::unordered_map<uint64_t, PhotonBlock> newPhotons;
+
     while (!m_stopReadPhotons)
     {
         if (auto err = readPhotonsIntoBuffer(m_donorCounterTask, donorBuffer); err.has_value())
@@ -480,10 +491,14 @@ std::optional<std::string> NICard::readPhotons()
 
         if (newPhotons.size() > 0)
         {
-            // try to lock for 10 clock cycles and then continue readout
             std::unique_lock lock(m_detectedPhotonsMutex, 100ns);
             if (lock.owns_lock())
-                m_detectedPhotons.splice(m_detectedPhotons.cend(), newPhotons);
+            {
+                for (auto& [t, photons] : newPhotons)
+                    m_detectedPhotons[t].combine(photons);
+
+                newPhotons.clear();
+            }
         }
     }
 
@@ -495,7 +510,7 @@ std::unique_lock<std::timed_mutex> NICard::getPhotonLockObject()
     return std::unique_lock(m_detectedPhotonsMutex, std::defer_lock);
 }
 
-const std::list<Photon>& NICard::getCurrentPhotons(const std::unique_lock<std::timed_mutex>& lock)
+std::unordered_map<uint64_t, PhotonBlock>& NICard::getCurrentPhotons(const std::unique_lock<std::timed_mutex>& lock)
 {
     if (!lock.owns_lock())
         throw std::invalid_argument("Lock object does not have lock!");

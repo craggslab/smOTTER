@@ -8,7 +8,9 @@
 #include <mutex>
 #include <future>
 #include <atomic>
-#include <photon.h>
+#include <unordered_map>
+
+#include "photon.h"
 
 #include <NIDAQmx.h>
 
@@ -77,7 +79,7 @@ public:
     std::optional<std::string> stop();
 
     std::unique_lock<std::timed_mutex> getPhotonLockObject();
-    const std::list<Photon>& getCurrentPhotons(const std::unique_lock<std::timed_mutex>& lock);
+    std::unordered_map<uint64_t, PhotonBlock>& getCurrentPhotons(const std::unique_lock<std::timed_mutex>& lock);
 
 private:
     std::vector<std::string> getNIStrings(int32(*strFunc)(const char *, char *, uInt32), std::optional<std::string> removeFromBegining = std::nullopt) const;
@@ -85,7 +87,7 @@ private:
     static std::optional<std::string> checkNIDAQError(int32 error);
 
     std::optional<std::string> readPhotonsIntoBuffer(TaskHandle counterTask, std::vector<uInt32>& buff);
-    std::optional<std::string> analysePhotons(const std::vector<uInt32>& buffer, uInt32& previousValue, uInt64& offset, FluorophoreType detector, std::list<Photon>& newPhotons);
+    std::optional<std::string> analysePhotons(const std::vector<uInt32>& buffer, uInt32& previousValue, uInt64& offset, FluorophoreType detector, std::unordered_map<uint64_t, PhotonBlock>& newPhotons);
     std::optional<std::string> readPhotons();
 
     std::optional<std::string> setupTriggers();
@@ -126,7 +128,7 @@ private:
     std::atomic<uint64_t> m_totalAcceptorPhotons;
     std::atomic<uint64_t> m_totalDonorPhotons;
     std::timed_mutex m_detectedPhotonsMutex;
-    std::list<Photon> m_detectedPhotons;
+    std::unordered_map<uint64_t, PhotonBlock> m_detectedPhotons;
 };
 
 #endif // NICARD_H

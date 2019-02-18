@@ -21,6 +21,8 @@ Pane {
     Universal.theme: Universal.Dark
     Universal.accent: Universal.Cyan
 
+
+
     Settings { //TODO: finish persistent settings
         property alias mainWindow_x: mainWindow.x
         property alias mainWindow_y: mainWindow.y
@@ -88,6 +90,8 @@ Pane {
                     LiveTraceView {
                         width: parent.width
                         height: parent.height
+
+                        acquisitionRunning: acquisitionSettings.acquisitionRunning
                     }
                 }
 
