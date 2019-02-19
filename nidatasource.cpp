@@ -176,7 +176,7 @@ void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *A
     auto lock = m_device->getPhotonLockObject();
     lock.lock();
 
-    auto currentPhotons = m_device->getCurrentPhotons(lock); //kinda bypassing the lock mechanism....
+    auto& currentPhotons = m_device->getCurrentPhotons(lock); //kinda bypassing the lock mechanism....
     for (auto t = min_t; t <= max_t; t++)
     {
         if (auto itr = currentPhotons.find(t); itr != currentPhotons.end())

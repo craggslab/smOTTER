@@ -1,1 +1,8 @@
 *.user
+.qmake.stash
+.vs/*
+debug/*
+release/*
+*.vcxproj*
+smfBox_Settings.ini
+x64/*

@@ -491,11 +491,13 @@ std::optional<std::string> NICard::readPhotons()
 
         if (newPhotons.size() > 0)
         {
-            std::unique_lock lock(m_detectedPhotonsMutex, 100ns);
+            std::unique_lock lock(m_detectedPhotonsMutex, 1us);
             if (lock.owns_lock())
             {
                 for (auto& [t, photons] : newPhotons)
+                {
                     m_detectedPhotons[t].combine(photons);
+                }
 
                 newPhotons.clear();
             }
