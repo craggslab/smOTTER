@@ -17,7 +17,7 @@ NIDataSource::NIDataSource(QQuickView *appViewer, QObject *parent)
     : QObject(parent),
       m_appViewer(appViewer),
       m_device(std::make_unique<NICard>()),
-      m_lastPhoton(std::nullopt)
+      m_lastSavedPhoton(std::nullopt)
 {
     updateAvailableDevices();
 }
@@ -106,31 +106,70 @@ void NIDataSource::setTimebase(const QString& pin) { m_device->setTimebase(pin.t
 void NIDataSource::setLaserControlResolution(quint32 res) { m_device->setLaserControlResolution(std::chrono::nanoseconds(res)); }
 void NIDataSource::setTimestampAdjustment(quint64 val) { m_device->setTimestampAdjustment(val); }
 
-void NIDataSource::setAlexPeriod(quint32 micros) { m_device->setAlexPeriod(std::chrono::microseconds(micros)); }
-void NIDataSource::setDonorLaserOffPercentage(quint8 percentage) { m_device->setDonorLaserOffPercentage(percentage); }
-void NIDataSource::setDonorLaserOnPercentage(quint8 percentage) { m_device->setDonorLaserOnPercentage(percentage); }
-void NIDataSource::setAcceptorLaserOffPercentage(quint8 percentage) { m_device->setAcceptorLaserOffPercentage(percentage); }
-void NIDataSource::setAcceptorLaserOnPercentage(quint8 percentage) { m_device->setAcceptorLaserOnPercentage(percentage); }
-void NIDataSource::setExperimentLength(quint32 minutes) { m_device->setExperimentLength(std::chrono::minutes(minutes)); }
+void NIDataSource::setAlexPeriod(quint32 micros) {
+    m_device->setAlexPeriod(std::chrono::microseconds(micros));
+    m_exporter.setAlexPeriod(std::chrono::microseconds(micros));
+}
+void NIDataSource::setDonorLaserOffPercentage(quint8 percentage) {
+    m_device->setDonorLaserOffPercentage(percentage);
+    m_exporter.setLaserOffPercentage<FluorophoreType::Donor>(percentage);
+}
+void NIDataSource::setDonorLaserOnPercentage(quint8 percentage) {
+    m_device->setDonorLaserOnPercentage(percentage);
+    m_exporter.setLaserOnPercentage<FluorophoreType::Donor>(percentage);
+}
+void NIDataSource::setAcceptorLaserOffPercentage(quint8 percentage) {
+    m_device->setAcceptorLaserOffPercentage(percentage);
+    m_exporter.setLaserOffPercentage<FluorophoreType::Acceptor>(percentage);
+}
+void NIDataSource::setAcceptorLaserOnPercentage(quint8 percentage) {
+    m_device->setAcceptorLaserOnPercentage(percentage);
+    m_exporter.setLaserOnPercentage<FluorophoreType::Acceptor>(percentage);
+}
+void NIDataSource::setExperimentLength(quint32 minutes) {
+    m_device->setExperimentLength(std::chrono::minutes(minutes));
+    m_exporter.setAcquisitionDuration(std::chrono::minutes(minutes));
+}
+
+void NIDataSource::setFilename(const QString& filename) { m_exporter.setFilename(filename.toStdString()); }
+void NIDataSource::setDescription(const QString& description) { m_exporter.setDescription(description.toStdString()); }
+void NIDataSource::setDonorExWavelength(float donorExWavelength) { m_exporter.setDonorExWavelength(donorExWavelength*1e-9f); }
+void NIDataSource::setAcceptorExWavelength(float acceptorExWavelength) { m_exporter.setAcceptorExWavelength(acceptorExWavelength*1e-9f); }
+void NIDataSource::setDonorDetWavelength(float donorDetWavelength) { m_exporter.setDonorDetWavelength(donorDetWavelength*1e-9f); }
+void NIDataSource::setAcceptorDetWavelength(float acceptorDetWavelength) { m_exporter.setAcceptorDetWavelength(acceptorDetWavelength*1e-9f); }
+void NIDataSource::setDonorInputPower(float donorInputPower) { m_exporter.setDonorInputPower(donorInputPower*1e-3f); }
+void NIDataSource::setAcceptorInputPower(float acceptorInputPower) { m_exporter.setAcceptorInputPower(acceptorInputPower*1e-3f); }
+void NIDataSource::setDonorDye(const QString& donorDye) { m_exporter.setDonorDye(donorDye.toStdString()); }
+void NIDataSource::setAcceptorDye(const QString& acceptorDye) { m_exporter.setAcceptorDye(acceptorDye.toStdString()); }
+void NIDataSource::setBufferDesc(const QString& bufferDesc) { m_exporter.setBufferDesc(bufferDesc.toStdString()); }
+void NIDataSource::setSampleName(const QString& sampleName) { m_exporter.setSampleName(sampleName.toStdString()); }
+void NIDataSource::setUserName(const QString& userName) { m_exporter.setUserName(userName.toStdString()); }
+void NIDataSource::setUserAffiliation(const QString& userAffiliation) { m_exporter.setUserAffiliation(userAffiliation.toStdString()); }
 
 bool NIDataSource::isRunning() { return m_device->isRunning(); }
 
 bool NIDataSource::startAcquisition()
 {
-    m_lastPhoton = std::nullopt;
+    m_lastSavedPhoton = std::nullopt;
 
-    auto res = m_device->prime();
-
+    auto res = m_exporter.createFile();
     if (res.has_value())
     {
-        qCritical() << QString::fromStdString(res.value());
+        emit error(QString::fromStdString(res.value()));
+        return false;
+    }
+
+    res = m_device->prime();
+    if (res.has_value())
+    {
+        emit error(QString::fromStdString(res.value()));
         return false;
     }
 
     res = m_device->start();
     if (res.has_value())
     {
-        qCritical() << QString::fromStdString(res.value());
+        emit error(QString::fromStdString(res.value()));
         return false;
     }
 
@@ -143,10 +182,9 @@ bool NIDataSource::stopAcquisition()
     auto res = m_device->stop();
     if (res.has_value())
     {
-        qWarning() << QString::fromStdString(res.value());
+        emit error(QString::fromStdString(res.value()));
         return false;
     }
-
 
     return true;
 }
@@ -165,18 +203,19 @@ void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *A
     auto AATrace = static_cast<QXYSeries*>(AASeries);
     auto DATrace = static_cast<QXYSeries*>(DASeries);
 
-    DDTrace->clear();
-    AATrace->clear();
-    DATrace->clear();
-
     QVector<QPointF> DDPoints(static_cast<int>(max_t - min_t));
     QVector<QPointF> AAPoints(static_cast<int>(max_t - min_t));
     QVector<QPointF> DAPoints(static_cast<int>(max_t - min_t));
 
     auto lock = m_device->getPhotonLockObject();
-    lock.lock();
+    if (!lock.try_lock_for(10ms))
+        return;
 
-    auto& currentPhotons = m_device->getCurrentPhotons(lock); //kinda bypassing the lock mechanism....
+    DDTrace->clear();
+    AATrace->clear();
+    DATrace->clear();
+
+    auto& currentPhotons = m_device->getCurrentBinnedPhotons(lock); //kinda bypassing the lock mechanism....
     for (auto t = min_t; t <= max_t; t++)
     {
         if (auto itr = currentPhotons.find(t); itr != currentPhotons.end())
@@ -198,4 +237,18 @@ void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *A
     DDTrace->replace(DDPoints);
     AATrace->replace(AAPoints);
     DATrace->replace(DAPoints);
+}
+
+void NIDataSource::saveNewPhotons()
+{
+    auto lock = m_device->getPhotonLockObject();
+    lock.lock();
+    auto start = m_device->getCurrentPhotons(lock).cbegin();
+    auto end = m_device->getCurrentPhotons(lock).cend();
+    lock.unlock();
+
+    if (auto res = m_exporter.savePhotons(start, end, std::move(lock)); res.has_value())
+    {
+        emit error(QString::fromStdString(res.value()));
+    }
 }

@@ -6,6 +6,7 @@
 #include <optional>
 #include <chrono>
 #include <mutex>
+#include <shared_mutex>
 #include <future>
 #include <atomic>
 #include <unordered_map>
@@ -17,29 +18,6 @@
 class NICard
 {
 public:
-    enum class FluorophoreType {
-        Donor,
-        Acceptor
-    };
-
-    struct DutyCycle {
-        void setOffPercent(uint8_t percent);
-        void setOnPercent(uint8_t percent);
-        void setPeriod(std::chrono::microseconds period);
-
-        bool isLaserOn(std::chrono::nanoseconds t);
-    private:
-        void updateTimings();
-
-        uint8_t off_percent;
-        uint8_t on_percent;
-        std::chrono::nanoseconds period;
-
-        std::chrono::nanoseconds onePercent;
-        std::chrono::nanoseconds offEndTime;
-        std::chrono::nanoseconds onEndTime;
-    };
-
     NICard(const std::string& deviceName = "");
 
     static std::vector<std::string> getAvailableDevices();
@@ -78,16 +56,19 @@ public:
     std::optional<std::string> start();
     std::optional<std::string> stop();
 
-    std::unique_lock<std::timed_mutex> getPhotonLockObject();
-    std::unordered_map<uint64_t, PhotonBlock>& getCurrentPhotons(const std::unique_lock<std::timed_mutex>& lock);
+
+    PhotonLock getPhotonLockObject();
+    std::unordered_map<uint64_t, PhotonBlock>& getCurrentBinnedPhotons(const PhotonLock& lock);
+    std::list<Photon>& getCurrentPhotons(const PhotonLock& lock);
 
 private:
     std::vector<std::string> getNIStrings(int32(*strFunc)(const char *, char *, uInt32), std::optional<std::string> removeFromBegining = std::nullopt) const;
     static std::vector<std::string> splitNIStrings(std::vector<char>& niStrings, std::optional<std::string> removeFromBegining = std::nullopt);
     static std::optional<std::string> checkNIDAQError(int32 error);
 
-    std::optional<std::string> readPhotonsIntoBuffer(TaskHandle counterTask, std::vector<uInt32>& buff);
-    std::optional<std::string> analysePhotons(const std::vector<uInt32>& buffer, uInt32& previousValue, uInt64& offset, FluorophoreType detector, std::unordered_map<uint64_t, PhotonBlock>& newPhotons);
+    std::optional<std::string> readPhotonsIntoBuffer(TaskHandle counterTask, std::vector<uInt32>& buff) const;
+    std::optional<std::string> analysePhotons(const std::vector<uInt32>& buffer, uInt32& previousValue, uInt64& offset, FluorophoreType detector,
+                                              std::list<Photon>& newPhotons, std::unordered_map<uint64_t, PhotonBlock>& newPhotonsBinned);
     std::optional<std::string> readPhotons();
 
     std::optional<std::string> setupTriggers();
@@ -127,8 +108,10 @@ private:
     std::future<std::optional<std::string>> m_readPhotonsResult;
     std::atomic<uint64_t> m_totalAcceptorPhotons;
     std::atomic<uint64_t> m_totalDonorPhotons;
-    std::timed_mutex m_detectedPhotonsMutex;
-    std::unordered_map<uint64_t, PhotonBlock> m_detectedPhotons;
+
+    PhotonMutex m_detectedPhotonsMutex;
+    std::list<Photon> m_photons;
+    std::unordered_map<uint64_t, PhotonBlock> m_binnedPhotons;
 };
 
 #endif // NICARD_H

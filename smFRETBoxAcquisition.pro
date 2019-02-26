@@ -16,7 +16,8 @@ SOURCES += \
         main.cpp \
     nicard.cpp \
     nidatasource.cpp \
-    photon.cpp
+    photon.cpp \
+    photonhdf5exporter.cpp
 
 RESOURCES += qml.qrc
 
@@ -42,4 +43,30 @@ else:win32-g++: PRE_TARGETDEPS += 'C:/Program Files (x86)/National Instruments/S
 HEADERS += \
     nicard.h \
     nidatasource.h \
-    photon.h
+    photon.h \
+    photonhdf5exporter.h \
+    photonhdf5helper.h
+
+win32:CONFIG(release, debug|release): LIBS += $$PWD/../HDF5/lib64/libhdf5.lib
+else:win32:CONFIG(debug, debug|release): LIBS += $$PWD/../HDF5/lib64/libhdf5_D.lib
+
+INCLUDEPATH += $$PWD/../HDF5/include
+DEPENDPATH += $$PWD/../HDF5/include
+
+win32:CONFIG(release, debug|release): LIBS += $$PWD/../HDF5/lib64/libhdf5_cpp.lib
+else:win32:CONFIG(debug, debug|release): LIBS += $$PWD/../HDF5/lib64/libhdf5_cpp_D.lib
+
+INCLUDEPATH += $$PWD/../HDF5/include
+DEPENDPATH += $$PWD/../HDF5/include
+
+win32:CONFIG(release, debug|release): LIBS += $$PWD/../HDF5/lib64/libszip.lib
+else:win32:CONFIG(debug, debug|release): LIBS += $$PWD/../HDF5/lib64/libszip_D.lib
+
+INCLUDEPATH += $$PWD/../HDF5/include
+DEPENDPATH += $$PWD/../HDF5/include
+
+win32:CONFIG(release, debug|release): LIBS += $$PWD/../HDF5/lib64/libzlib.lib
+else:win32:CONFIG(debug, debug|release): LIBS += $$PWD/../HDF5/lib64/libzlib_D.lib
+
+INCLUDEPATH += $$PWD/../HDF5/include
+DEPENDPATH += $$PWD/../HDF5/include

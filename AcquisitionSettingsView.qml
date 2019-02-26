@@ -5,6 +5,10 @@ import QtQuick.Controls.Styles 1.4
 
 GridLayout {
     property bool acquisitionRunning: false;
+    onAcquisitionRunningChanged: {
+        if (!acquisitionRunning)
+            dataSource.saveNewPhotons();
+    }
 
     columns: 2
     rows: 3

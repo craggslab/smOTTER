@@ -50,7 +50,7 @@ ChartView {
 
     Timer {
         id: refreshTimer
-        interval: 40
+        interval: 20
         running: acquisitionRunning
         repeat: true
 

@@ -10,6 +10,7 @@
 #include <chrono>
 
 #include "photon.h"
+#include "photonhdf5exporter.h"
 #include "nicard.h"
 
 QT_BEGIN_NAMESPACE
@@ -27,6 +28,7 @@ class NIDataSource : public QObject
     Q_PROPERTY(QStringList counters READ counters NOTIFY countersChanged)
     Q_PROPERTY(QStringList counterLines READ counterLines NOTIFY counterLinesChanged)
     Q_PROPERTY(QStringList timebases READ timebases NOTIFY timebasesChanged)
+
 public:
     explicit NIDataSource(QQuickView *appViewer, QObject *parent = nullptr);
 
@@ -46,6 +48,7 @@ signals:
     void counterLinesChanged();
     void timebasesChanged();
     void sendValues();
+    void error(const QString& msg);
 
 public slots:
     void updateAvailableDevices();
@@ -70,6 +73,22 @@ public slots:
     void setAcceptorLaserOnPercentage(quint8 percentage);
     void setExperimentLength(quint32 minutes);
 
+    void setFilename(const QString& filename);
+    void setDescription(const QString& description);
+    void setDonorExWavelength(float donorExWavelength);
+    void setAcceptorExWavelength(float acceptorExWavelength);
+    void setDonorDetWavelength(float donorDetWavelength);
+    void setAcceptorDetWavelength(float acceptorDetWavelength);
+    void setDonorInputPower(float donorInputPower);
+    void setAcceptorInputPower(float acceptorInputPower);
+    void setDonorDye(const QString& donorDye);
+    void setAcceptorDye(const QString& acceptorDye);
+    void setBufferDesc(const QString& bufferDesc);
+    void setSampleName(const QString& sampleName);
+    void setUserName(const QString& userName);
+    void setUserAffiliation(const QString& userAffiliation);
+
+
     bool isRunning();
     bool startAcquisition();
     bool stopAcquisition();
@@ -78,12 +97,14 @@ public slots:
     quint64 getTotalAcceptorPhotons();
 
     void updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *AASeries, QAbstractSeries *DASeries, quint64 min_t, quint64 max_t);
+    void saveNewPhotons();
 private:
     QStringList m_availableDevices;
     QQuickView *m_appViewer;
 
     std::unique_ptr<NICard> m_device;
-    std::optional<std::list<Photon>::const_iterator> m_lastPhoton;
+    std::optional<Photon::constPhotonIterator> m_lastSavedPhoton;
+    PhotonHDF5Exporter m_exporter;
 };
 
 #endif // NIDATASOURCE_H

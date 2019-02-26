@@ -3,6 +3,7 @@ import QtQuick.Window 2.12
 import QtCharts 2.3
 import QtQuick.Layouts 1.12
 import QtQuick.Controls 2.5
+import QtQuick.Dialogs 1.2
 import QtQuick.Controls.Material 2.3
 import QtQuick.Controls.Universal 2.3
 import Qt.labs.settings 1.1
@@ -28,6 +29,17 @@ Pane {
         property alias mainWindow_y: mainWindow.y
         property alias mainWindow_width: mainWindow.width
         property alias mainWindow_height: mainWindow.height
+
+        property alias donorLabel: saveSettings.donorLabel
+        property alias acceptorLabel: saveSettings.acceptorLabel
+        property alias donorExWavelength: saveSettings.donorExWavelength
+        property alias acceptorExWavelength: saveSettings.acceptorExWavelength
+        property alias donorDetWavelength: saveSettings.donorDetWavelength
+        property alias acceptorDetWavelength: saveSettings.acceptorDetWavelength
+        property alias donorLaserPower: saveSettings.donorLaserPower
+        property alias acceptorLaserPower: saveSettings.acceptorLaserPower
+        property alias userName: saveSettings.userName
+        property alias userAffiliation: saveSettings.userAffiliation
 
         fileName: "./smfBox_Settings.ini"
     }
@@ -186,14 +198,50 @@ Pane {
 
             SaveSettingsView {
                 id: saveSettings
-                anchors.top: parent.top
+                width: parent.width
+                height: parent.height
+                /*anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 anchors.left: parent.left
-                anchors.right: parent.right
+                anchors.right: parent.right*/
             }
 
         }
 
+    }
+
+    Popup {
+        id: errorMessageDialog
+        anchors.centerIn: parent
+
+        modal: Qt.WindowModal
+
+        padding: 20
+
+        ColumnLayout {
+            anchors.fill: parent
+
+            Label {
+                font.pixelSize: 20
+                text: "Error: "
+            }
+
+            TextArea {
+                Layout.alignment: Qt.AlignCenter
+                id: errorTextArea
+                readOnly: true
+                selectByMouse: true
+            }
+        }
+    }
+
+
+    Connections {
+        target: dataSource
+        onError: {
+            errorTextArea.text = msg
+            errorMessageDialog.visible = true
+        }
     }
 
 }
