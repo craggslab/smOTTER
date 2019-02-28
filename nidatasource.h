@@ -92,18 +92,20 @@ public slots:
     bool isRunning();
     bool startAcquisition();
     bool stopAcquisition();
+    qint64 timeSinceAcqStart();
 
     quint64 getTotalDonorPhotons();
     quint64 getTotalAcceptorPhotons();
 
     void updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *AASeries, QAbstractSeries *DASeries, quint64 min_t, quint64 max_t);
-    void saveNewPhotons();
+    void saveNewPhotons(bool endOfAcquisition);
 private:
     QStringList m_availableDevices;
     QQuickView *m_appViewer;
 
     std::unique_ptr<NICard> m_device;
-    std::optional<Photon::constPhotonIterator> m_lastSavedPhoton;
+    std::future<std::pair<PhotonStore::ConstPhotonIterator, std::optional<std::string>>> m_saveFuture;
+    std::optional<PhotonStore::ConstPhotonIterator> m_lastSavedPhoton;
     PhotonHDF5Exporter m_exporter;
 };
 

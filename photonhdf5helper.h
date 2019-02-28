@@ -40,8 +40,8 @@ namespace PhotonHDF5 {
     const std::string alex_offset_name				= "alex_offset";
     const std::string alex_offset_desc				= "Time offset (in timestamps unit) to apply to timestamps to obtain a properly aligned alternation histogram.";
 
-    const std::string detector_specs_name			= "/photon_data/measurement_specs/detector_specs";
-    const std::string detector_specs_desc			= "Mapping between the pixel IDs and the detection channels.";
+    const std::string detectors_specs_name			= "/photon_data/measurement_specs/detectors_specs";
+    const std::string detectors_specs_desc			= "Mapping between the pixel IDs and the detection channels.";
 
     const std::string spectral_ch1_name				= "spectral_ch1";
     const std::string spectral_ch1_desc				= "Pixel IDs for the first spectral channel (i.e. donor in a 2-color smFRET measurement).";
@@ -61,8 +61,8 @@ namespace PhotonHDF5 {
     const std::string num_spectral_ch_name			= "num_spectral_ch";
     const std::string num_spectral_ch_desc			= "Number of distinct spectral bands which are acquired.";
 
-    const std::string num_polerization_ch_name		= "num_polerization_ch";
-    const std::string num_polerization_ch_desc		= "Number of distinct polarization states which are acquired.";
+    const std::string num_polarization_ch_name		= "num_polarization_ch";
+    const std::string num_polarization_ch_desc		= "Number of distinct polarization states which are acquired.";
 
     const std::string num_split_ch_name				= "num_split_ch";
     const std::string num_split_ch_desc				= "Number of distinct detection channels detecting the same spectral band and polarization. This value is > 1 when using a non-polarizing beam splitter.";
@@ -162,18 +162,21 @@ H5::PredType createStringType(const std::string& str)
     return strType;
 }
 
-void writeStringAttribute(const std::string& str, const std::string& name, H5::H5Object& object)
+void writeStringAttribute(const std::string& str, const std::string& name, H5::H5Object& object, bool utf8 = false)
 {
-    auto strType = createStringType(str);
-    auto strAttr = object.createAttribute(name, strType, H5::DataSpace());
+    //auto strType = createStringType(str);
+    auto strType = H5::StrType(H5::PredType::C_S1, str.length());
+    if (utf8)
+        strType.setCset(H5T_CSET_UTF8);
+    auto strAttr = object.createAttribute(name, strType, H5::DataSpace(H5S_SCALAR));
     strAttr.write(strType, str);
 }
 
 template<typename T>
-void writeDataset(const std::vector<T>& values, const std::string& name, const std::string& description, const H5::PredType& dataType, const H5::PredType& saveType,  H5::Group& group)
+void writeDataset(const std::vector<T>& values, const std::string& name, const std::string& description, const H5::PredType& dataType, const H5::PredType& saveType,  H5::Group& group, bool forceArray = false)
 {
     hsize_t dim = values.size();
-    auto dataSpace = dim == 1 ? H5::DataSpace() : H5::DataSpace(1, &dim);
+    auto dataSpace = (dim == 1 && ! forceArray) ? H5::DataSpace(H5S_SCALAR) : H5::DataSpace(1, &dim);
     auto dataSet = group.createDataSet(name, saveType, dataSpace);
 
     if constexpr (std::is_same_v<T, std::string>)
@@ -186,8 +189,15 @@ void writeDataset(const std::vector<T>& values, const std::string& name, const s
 
 void writeStringDataset(const std::string& str, const std::string& name, const std::string& description, H5::Group& group)
 {
-    auto type = createStringType(str);
-    writeDataset<std::string>( { str }, name, description, type, type, group);
+    auto type = H5::StrType(H5::PredType::C_S1, str.length());
+    auto dataSpace = H5::DataSpace(H5S_SCALAR);
+    auto dataSet = group.createDataSet(name, type, dataSpace);
+    dataSet.write(str, type);
+
+    writeStringAttribute(description, "TITLE", dataSet);
+    writeStringAttribute("ARRAY", "CLASS", dataSet, true);
+    writeStringAttribute("python", "FLAVOR", dataSet, true);
+    writeStringAttribute("2.4", "VERSION", dataSet, true);
 }
 
 H5::Group createGroup(const std::string& name, const std::string& description, H5::H5File& file)

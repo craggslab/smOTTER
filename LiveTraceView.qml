@@ -54,21 +54,18 @@ ChartView {
         running: acquisitionRunning
         repeat: true
 
-        property int count: 0
-
         onTriggered: {
-            dataSource.updateLiveTrace(countsDD, countsAA, countsDA, axisX.min, count*interval)
+            var t = dataSource.timeSinceAcqStart()
+            dataSource.updateLiveTrace(countsDD, countsAA, countsDA, axisX.min, t)
 
-            if (count*interval > axisX.max)
+            if (t > axisX.max)
             {
                 axisX.min = axisX.max
                 axisX.max += 1000;
             }
-            count++;
         }
 
         onRunningChanged: {
-            count = 0
             if (running)
             {
                 countsAA.clear()

@@ -55,12 +55,9 @@ public:
     std::optional<std::string> prime();
     std::optional<std::string> start();
     std::optional<std::string> stop();
+    std::chrono::milliseconds timeSinceAcqStart();
 
-
-    PhotonLock getPhotonLockObject();
-    std::unordered_map<uint64_t, PhotonBlock>& getCurrentBinnedPhotons(const PhotonLock& lock);
-    std::list<Photon>& getCurrentPhotons(const PhotonLock& lock);
-
+    PhotonStore& getPhotonStore();
 private:
     std::vector<std::string> getNIStrings(int32(*strFunc)(const char *, char *, uInt32), std::optional<std::string> removeFromBegining = std::nullopt) const;
     static std::vector<std::string> splitNIStrings(std::vector<char>& niStrings, std::optional<std::string> removeFromBegining = std::nullopt);
@@ -104,14 +101,15 @@ private:
     TaskHandle m_acceptorCounterTask;
 
     bool m_running;
+    std::chrono::steady_clock m_acquisitionClock;
+    std::chrono::time_point<std::chrono::steady_clock> m_acquisitionStart;
+
     std::atomic<bool> m_stopReadPhotons;
     std::future<std::optional<std::string>> m_readPhotonsResult;
     std::atomic<uint64_t> m_totalAcceptorPhotons;
     std::atomic<uint64_t> m_totalDonorPhotons;
 
-    PhotonMutex m_detectedPhotonsMutex;
-    std::list<Photon> m_photons;
-    std::unordered_map<uint64_t, PhotonBlock> m_binnedPhotons;
+    PhotonStore m_photonStore;
 };
 
 #endif // NICARD_H

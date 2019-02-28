@@ -14,7 +14,7 @@ public:
     PhotonHDF5Exporter();
 
     std::optional<std::string> createFile();
-    std::optional<std::string> savePhotons(const Photon::constPhotonIterator& start, const Photon::constPhotonIterator& end, PhotonLock lock);
+    std::pair<PhotonStore::ConstPhotonIterator, std::optional<std::string>> savePhotons(std::optional<PhotonStore::ConstPhotonIterator> start_opt, PhotonStore& store);
 
     void setFilename(const std::string& filename);
     void setAcquisitionDuration(const std::chrono::seconds& acquisitionDuration);
@@ -35,7 +35,6 @@ public:
 
     template<FluorophoreType ft>
     void setLaserOnPercentage(uint8_t percent) {
-        std::cout << "Test " << percent << std::endl;
         if constexpr (ft == FluorophoreType::Donor)
             m_donorDutyCycle.setOnPercent(percent);
         else
@@ -45,7 +44,6 @@ public:
     template<FluorophoreType ft>
     void setLaserOffPercentage(uint8_t percent)
     {
-        std::cout << "Another test " << percent << std::endl;
         if constexpr (ft == FluorophoreType::Donor)
             m_donorDutyCycle.setOffPercent(percent);
         else

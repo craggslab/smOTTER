@@ -15,10 +15,14 @@ using namespace std::chrono_literals;
 
 PhotonHDF5Exporter::PhotonHDF5Exporter() {}
 
-std::optional<std::string> PhotonHDF5Exporter::savePhotons(const Photon::constPhotonIterator& start, const Photon::constPhotonIterator& end, PhotonLock lock)
+std::pair<PhotonStore::ConstPhotonIterator, std::optional<std::string>> PhotonHDF5Exporter::savePhotons(std::optional<PhotonStore::ConstPhotonIterator> start_opt, PhotonStore& store)
 {
+    auto lock = store.getReadLockObject();
+
     lock.lock();
-    std::vector<Photon> photonVec(start, end);
+    auto start = start_opt.has_value() ?  ++start_opt.value() : store.photons(lock).begin();
+    auto end = store.photons(lock).end();
+    std::vector<Photon> photonVec(start, end--);
     lock.unlock();
 
     std::vector<uint64_t> timestamps(photonVec.size());
@@ -36,20 +40,25 @@ std::optional<std::string> PhotonHDF5Exporter::savePhotons(const Photon::constPh
         expandDataset(timestamps, PhotonHDF5::timestamps_name, H5::PredType::NATIVE_UINT64, photonDataGroup);
         expandDataset(detectors, PhotonHDF5::detectors_name, H5::PredType::NATIVE_UINT8, photonDataGroup);
     }
-    catch (H5::FileIException& err) {  return std::make_optional(err.getDetailMsg()); }
-    catch (H5::DataSetIException& err) { return std::make_optional(err.getDetailMsg()); }
-    catch (H5::DataSpaceIException& err) { return std::make_optional(err.getDetailMsg()); }
-    catch (H5::GroupIException& err) { return std::make_optional(err.getDetailMsg()); }
-    catch (PhotonHDF5::bad_photon_hdf5_error& err) { return std::make_optional(err.what()); }
+    catch (H5::FileIException& err) {  return std::make_pair(start, std::make_optional(err.getDetailMsg())); }
+    catch (H5::DataSetIException& err) { return std::make_pair(start, std::make_optional(err.getDetailMsg())); }
+    catch (H5::DataSpaceIException& err) { return std::make_pair(start, std::make_optional(err.getDetailMsg())); }
+    catch (H5::GroupIException& err) { return std::make_pair(start, std::make_optional(err.getDetailMsg())); }
+    catch (PhotonHDF5::bad_photon_hdf5_error& err) { return std::make_pair(start, std::make_optional(err.what())); }
 
-    return std::nullopt;
+    return std::make_pair(end, std::nullopt);
 }
 
 
 void PhotonHDF5Exporter::setFilename(const std::string& filename) { m_filename = filename; }
 void PhotonHDF5Exporter::setAcquisitionDuration(const std::chrono::seconds& acquisitionDuration) { m_acquisitionDuration = acquisitionDuration; }
 void PhotonHDF5Exporter::setDescription(const std::string& description) { m_description = description; }
-void PhotonHDF5Exporter::setAlexPeriod(const std::chrono::microseconds& alexPeriod) { m_alexPeriod = alexPeriod; }
+void PhotonHDF5Exporter::setAlexPeriod(const std::chrono::microseconds& alexPeriod)
+{
+    m_alexPeriod = alexPeriod;
+    m_donorDutyCycle.setPeriod(alexPeriod);
+    m_acceptorDutyCycle.setPeriod(alexPeriod);
+}
 void PhotonHDF5Exporter::setDonorExWavelength(float donorExWavelength) { m_donorExWavelength = donorExWavelength; }
 void PhotonHDF5Exporter::setAcceptorExWavelength(float acceptorExWavelength) { m_acceptorExWavelength = acceptorExWavelength; }
 void PhotonHDF5Exporter::setDonorDetWavelength(float donorDetWavelength) { m_donorDetWavelength = donorDetWavelength; }
@@ -105,6 +114,7 @@ std::optional<std::string> PhotonHDF5Exporter::createFile()
     if (auto ret = checkAllValuesPresent(); ret.has_value())
         return ret;
 
+
     try {
         H5::Exception::dontPrint();
 
@@ -134,16 +144,16 @@ std::optional<std::string> PhotonHDF5Exporter::createFile()
         writeDataset<uint64_t>		( { 0ull }, 																				PhotonHDF5::alex_offset_name, 				PhotonHDF5::alex_offset_desc, 				H5::PredType::NATIVE_UINT64, 		H5::PredType::STD_U64LE, 			measurementSpecsGroup);
 
         // ----- Detector Specs Group ------- //
-        auto detectorSpecsGroup = createGroup(PhotonHDF5::detector_specs_name, 	PhotonHDF5::detector_specs_desc, 	file);
-        writeDataset<uint8_t>({ 0 }, PhotonHDF5::spectral_ch1_name, 			PhotonHDF5::spectral_ch1_desc, 		H5::PredType::NATIVE_UINT8, H5::PredType::STD_U8LE, detectorSpecsGroup);
-        writeDataset<uint8_t>({ 1 }, PhotonHDF5::spectral_ch2_name, 			PhotonHDF5::spectral_ch2_desc, 		H5::PredType::NATIVE_UINT8, H5::PredType::STD_U8LE, detectorSpecsGroup);
+        auto detectorSpecsGroup = createGroup(PhotonHDF5::detectors_specs_name, 	PhotonHDF5::detectors_specs_desc, 	file);
+        writeDataset<uint8_t>({ 0 }, PhotonHDF5::spectral_ch1_name, 			PhotonHDF5::spectral_ch1_desc, 		H5::PredType::NATIVE_UINT8, H5::PredType::STD_U8LE, detectorSpecsGroup, true);
+        writeDataset<uint8_t>({ 1 }, PhotonHDF5::spectral_ch2_name, 			PhotonHDF5::spectral_ch2_desc, 		H5::PredType::NATIVE_UINT8, H5::PredType::STD_U8LE, detectorSpecsGroup, true);
 
         // ----- Setup Group ------- //
         auto setupGroup = createGroup(PhotonHDF5::setup_name, PhotonHDF5::setup_desc, file);
         writeDataset<uint8_t>	( { 2 }, 												PhotonHDF5::num_pixels_name, 				PhotonHDF5::num_pixels_desc, 				H5::PredType::NATIVE_UINT8, H5::PredType::STD_U8LE, 	setupGroup);
         writeDataset<uint8_t>	( { 1 }, 												PhotonHDF5::num_spots_name, 				PhotonHDF5::num_spots_desc, 				H5::PredType::NATIVE_UINT8, H5::PredType::STD_U8LE, 	setupGroup);
         writeDataset<uint8_t>	( { 2 }, 												PhotonHDF5::num_spectral_ch_name, 			PhotonHDF5::num_spectral_ch_desc, 			H5::PredType::NATIVE_UINT8, H5::PredType::STD_U8LE, 	setupGroup);
-        writeDataset<uint8_t>	( { 1 }, 												PhotonHDF5::num_polerization_ch_name, 		PhotonHDF5::num_spectral_ch_desc, 			H5::PredType::NATIVE_UINT8, H5::PredType::STD_U8LE, 	setupGroup);
+        writeDataset<uint8_t>	( { 1 }, 												PhotonHDF5::num_polarization_ch_name, 		PhotonHDF5::num_spectral_ch_desc, 			H5::PredType::NATIVE_UINT8, H5::PredType::STD_U8LE, 	setupGroup);
         writeDataset<uint8_t>	( { 1 }, 												PhotonHDF5::num_split_ch_name, 				PhotonHDF5::num_split_ch_desc, 				H5::PredType::NATIVE_UINT8, H5::PredType::STD_U8LE, 	setupGroup);
         writeDataset<uint8_t>	( { 1 }, 												PhotonHDF5::modulated_excitation_name, 		PhotonHDF5::modulated_excitation_desc, 		H5::PredType::NATIVE_UINT8, H5::PredType::STD_U8LE, 	setupGroup);
         writeDataset<uint8_t>	( { 0 }, 												PhotonHDF5::lifetime_name, 					PhotonHDF5::lifetime_desc, 					H5::PredType::NATIVE_UINT8, H5::PredType::STD_U8LE, 	setupGroup);

@@ -174,9 +174,9 @@ std::optional<std::string> NICard::prime()
 std::optional<std::string> NICard::start()
 {
     {
-        std::lock_guard lock(m_detectedPhotonsMutex);
-        m_binnedPhotons.clear();
-        m_photons.clear();
+        auto lock = m_photonStore.getWriteLockObject();
+        lock.lock();
+        m_photonStore.clear(lock);
     }
 
     RET_IF_FAILED(DAQmxStartTask(m_donorCounterTask));
@@ -189,6 +189,8 @@ std::optional<std::string> NICard::start()
     m_readPhotonsResult = std::async(std::launch::async, &NICard::readPhotons, this);
 
     m_running = true;
+    m_acquisitionStart = m_acquisitionClock.now();
+
     return std::nullopt;
 }
 
@@ -218,6 +220,11 @@ std::optional<std::string> NICard::stop()
         return readPhotonsResult;
     else
         return std::nullopt;
+}
+
+std::chrono::milliseconds NICard::timeSinceAcqStart()
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(m_acquisitionClock.now() - m_acquisitionStart);
 }
 
 std::optional<std::string> NICard::checkNIDAQError(int32 error)
@@ -414,7 +421,7 @@ std::optional<std::string> NICard::analysePhotons(const std::vector<uInt32> &buf
             if (m_donorLaserDutyCycle.isLaserOn(timeRelativeToAlex))
             {
                 newPhotons.emplace_back(time, PhotonType::DD);
-                newPhotonsBinned[duration_cast<unsigned_ms>(time).count()].addPhoton<PhotonType::DD>(--newPhotons.cend());
+                newPhotonsBinned[duration_cast<unsigned_ms>(time).count()].countPhoton<PhotonType::DD>();
             }
             else
             {
@@ -428,12 +435,12 @@ std::optional<std::string> NICard::analysePhotons(const std::vector<uInt32> &buf
             if (m_donorLaserDutyCycle.isLaserOn(timeRelativeToAlex))
             {
                 newPhotons.emplace_back(time, PhotonType::DA);
-                newPhotonsBinned[duration_cast<unsigned_ms>(time).count()].addPhoton<PhotonType::DA>(--newPhotons.cend());
+                newPhotonsBinned[duration_cast<unsigned_ms>(time).count()].countPhoton<PhotonType::DA>();
             }
             else if (m_acceptorLaserDutyCycle.isLaserOn(timeRelativeToAlex))
             {
                 newPhotons.emplace_back(time, PhotonType::AA);
-                newPhotonsBinned[duration_cast<unsigned_ms>(time).count()].addPhoton<PhotonType::AA>(--newPhotons.cend());
+                newPhotonsBinned[duration_cast<unsigned_ms>(time).count()].countPhoton<PhotonType::AA>();
             }
             else
             {
@@ -473,13 +480,14 @@ std::optional<std::string> NICard::readPhotons()
 
         if (newPhotons.size() > 0)
         {
-            std::unique_lock lock(m_detectedPhotonsMutex, 1us);
-            if (lock.owns_lock())
+            auto lock = m_photonStore.getWriteLockObject();
+
+            if (lock.try_lock_for(1us))
             {
-                m_photons.splice(m_photons.end(), newPhotons);
+                m_photonStore.spliceNewPhotons(newPhotons, lock);
                 for (auto& [t, photons] : newPhotonsBinned)
                 {
-                    m_binnedPhotons[t].combine(photons);
+                    m_photonStore.combinePhotonBlock(t, photons, lock);
                 }
 
                 newPhotonsBinned.clear();
@@ -490,23 +498,7 @@ std::optional<std::string> NICard::readPhotons()
     return std::nullopt;
 }
 
-PhotonLock NICard::getPhotonLockObject()
+PhotonStore& NICard::getPhotonStore()
 {
-    return PhotonLock(m_detectedPhotonsMutex, std::defer_lock);
-}
-
-std::unordered_map<uint64_t, PhotonBlock>& NICard::getCurrentBinnedPhotons(const PhotonLock& lock)
-{
-    if (!lock.owns_lock())
-        throw std::invalid_argument("Lock object does not own lock!");
-
-    return m_binnedPhotons;
-}
-
-std::list<Photon>& NICard::getCurrentPhotons(const PhotonLock& lock)
-{
-    if (!lock.owns_lock())
-        throw std::invalid_argument("Lock object does not own lock!");
-
-    return m_photons;
+    return m_photonStore;
 }

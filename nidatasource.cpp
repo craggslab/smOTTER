@@ -189,6 +189,11 @@ bool NIDataSource::stopAcquisition()
     return true;
 }
 
+qint64 NIDataSource::timeSinceAcqStart()
+{
+    return m_device->timeSinceAcqStart().count();
+}
+
 quint64 NIDataSource::getTotalDonorPhotons() { return m_device->getTotalDonorPhotons(); }
 quint64 NIDataSource::getTotalAcceptorPhotons() { return m_device->getTotalAcceptorPhotons(); }
 
@@ -207,7 +212,9 @@ void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *A
     QVector<QPointF> AAPoints(static_cast<int>(max_t - min_t));
     QVector<QPointF> DAPoints(static_cast<int>(max_t - min_t));
 
-    auto lock = m_device->getPhotonLockObject();
+    auto& store = m_device->getPhotonStore();
+
+    auto lock = store.getReadLockObject();
     if (!lock.try_lock_for(10ms))
         return;
 
@@ -215,10 +222,9 @@ void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *A
     AATrace->clear();
     DATrace->clear();
 
-    auto& currentPhotons = m_device->getCurrentBinnedPhotons(lock); //kinda bypassing the lock mechanism....
     for (auto t = min_t; t <= max_t; t++)
     {
-        if (auto itr = currentPhotons.find(t); itr != currentPhotons.end())
+        if (auto itr = store.findBin(t, lock); itr != store.binnedPhotons(lock).end())
         {
             DDPoints.push_back(QPointF(t, static_cast<double>(itr->second.nDD)));
             AAPoints.push_back(QPointF(t, -static_cast<double>(itr->second.nAA)));
@@ -239,16 +245,29 @@ void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *A
     DATrace->replace(DAPoints);
 }
 
-void NIDataSource::saveNewPhotons()
+void NIDataSource::saveNewPhotons(bool endOfAcquisition)
 {
-    auto lock = m_device->getPhotonLockObject();
-    lock.lock();
-    auto start = m_device->getCurrentPhotons(lock).cbegin();
-    auto end = m_device->getCurrentPhotons(lock).cend();
-    lock.unlock();
+    auto& store = m_device->getPhotonStore();
 
-    if (auto res = m_exporter.savePhotons(start, end, std::move(lock)); res.has_value())
+    if (m_saveFuture.valid())
     {
-        emit error(QString::fromStdString(res.value()));
+        auto res = m_saveFuture.get();
+        if (res.second.has_value())
+        {
+            emit error(QString::fromStdString(res.second.value()));
+        }
+
+        m_lastSavedPhoton = res.first;
+    }
+
+    m_saveFuture = std::async(std::launch::async, &PhotonHDF5Exporter::savePhotons,
+                        &m_exporter, m_lastSavedPhoton, std::ref(store));
+
+    if (endOfAcquisition)
+    {
+        if (auto [_, res] = m_saveFuture.get(); res.has_value())
+            emit error(QString::fromStdString(res.value()));
+
+        std::cout << "Done too" << std::endl;
     }
 }

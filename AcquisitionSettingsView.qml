@@ -7,7 +7,7 @@ GridLayout {
     property bool acquisitionRunning: false;
     onAcquisitionRunningChanged: {
         if (!acquisitionRunning)
-            dataSource.saveNewPhotons();
+            dataSource.saveNewPhotons(true);
     }
 
     columns: 2
@@ -110,12 +110,24 @@ GridLayout {
                 repeat: true
 
                 onTriggered: {
-                   acquisitionRunning = dataSource.isRunning()
+                    acquisitionRunning = dataSource.isRunning()
                     if (acquisitionRunning) {
                         timeSoFar += interval
                         totalDonorPhotonsLabel.text = dataSource.getTotalDonorPhotons();
                         totalAcceptorPhotonsLabel.text = dataSource.getTotalAcceptorPhotons();
                     }
+                }
+            }
+
+            Timer {
+                id: saveTimer
+                interval: 60000.0
+                repeat: true
+
+                running: acquisitionRunning;
+
+                onTriggered: {
+                    dataSource.saveNewPhotons(false);
                 }
             }
 
