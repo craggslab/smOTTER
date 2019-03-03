@@ -11,7 +11,7 @@ import Qt.labs.settings 1.1
 
 Pane {
     id: mainWindow
-    width: 1440
+    width: 1560
     height: 900
 
 
@@ -24,12 +24,18 @@ Pane {
 
 
 
-    Settings { //TODO: finish persistent settings
+    Settings {
+        category: "General"
         property alias mainWindow_x: mainWindow.x
         property alias mainWindow_y: mainWindow.y
         property alias mainWindow_width: mainWindow.width
         property alias mainWindow_height: mainWindow.height
 
+        fileName: "./smfBox_Settings.ini"
+    }
+
+    Settings {
+        category: "SaveSettings"
         property alias donorLabel: saveSettings.donorLabel
         property alias acceptorLabel: saveSettings.acceptorLabel
         property alias donorExWavelength: saveSettings.donorExWavelength
@@ -40,6 +46,44 @@ Pane {
         property alias acceptorLaserPower: saveSettings.acceptorLaserPower
         property alias userName: saveSettings.userName
         property alias userAffiliation: saveSettings.userAffiliation
+
+        fileName: "./smfBox_Settings.ini"
+    }
+
+    Settings {
+        category: "AcquisitionSettings"
+        property alias savePeriodically: acquisitionSettings.savePeriodically
+        property alias saveInterval: acquisitionSettings.saveInterval
+        property alias expLength: acquisitionSettings.expLength
+
+        fileName: "./smfBox_Settings.ini"
+    }
+
+    Settings {
+        category: "LaserSettings"
+        property alias donorOffPercent: laserDutyCycles.donorOffPercent
+        property alias donorOnPercent: laserDutyCycles.donorOnPercent
+        property alias acceptorOffPercent: laserDutyCycles.acceptorOffPercent
+        property alias acceptorOnPercent: laserDutyCycles.acceptorOnPercent
+        property alias alexPeriod: laserDutyCycles.alexPeriod
+
+        fileName: "./smfBox_Settings.ini"
+    }
+
+    Settings {
+        category: "NISettings"
+        property alias deviceDefault: niSettings.deviceDefault
+        property alias donorLaserPinDefault: niSettings.donorLaserPinDefault
+        property alias acceptorLaserPinDefault: niSettings.acceptorLaserPinDefault
+        property alias donorDetectorCounterDefualt: niSettings.donorDetectorCounterDefualt
+        property alias acceptorDetectorCounterDefault: niSettings.acceptorDetectorCounterDefault
+        property alias donorDetectorPinDefault: niSettings.donorDetectorPinDefault
+        property alias acceptorDetectorPinDefault: niSettings.acceptorDetectorPinDefault
+        property alias donorDetectorGateDefault: niSettings.donorDetectorGateDefault
+        property alias acceptorDetectorGateDefault: niSettings.acceptorDetectorGateDefault
+        property alias timebaseDefault: niSettings.timebaseDefault
+        property alias laserControlResolution: niSettings.laserControlResolution
+        property alias timestampAdjustmentValue: niSettings.timestampAdjustmentValue
 
         fileName: "./smfBox_Settings.ini"
     }
@@ -115,6 +159,8 @@ Pane {
                         text: "Coming soon...."
                         horizontalAlignment: TextEdit.AlignHCenter
                         verticalAlignment: TextEdit.AlignVCenter
+
+                        enabled: false
                     }
                 }
 
@@ -123,6 +169,8 @@ Pane {
                         id: niSettings
                         width: parent.width
                         height: parent.height
+
+                        enabled: !acquisitionSettings.acquisitionRunning
                     }
                 }
 
@@ -144,6 +192,16 @@ Pane {
             Layout.preferredHeight: 1
 
             Material.elevation: 6
+
+            TextArea {
+                anchors.fill: parent
+
+                text: "Coming soon..."
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+
+                enabled: false
+            }
         }
 
         GroupBox {
@@ -172,7 +230,7 @@ Pane {
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignBottom
-            Layout.preferredWidth: 1
+            Layout.preferredWidth: 1.2
             Layout.preferredHeight: 1
 
             Material.elevation: 6
@@ -183,6 +241,8 @@ Pane {
                 anchors.bottom: parent.bottom
                 anchors.left: parent.left
                 anchors.right: parent.right
+
+                enabled: !acquisitionSettings.acquisitionRunning
             }
         }
 
@@ -191,7 +251,7 @@ Pane {
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignBottom
-            Layout.preferredWidth: 1
+            Layout.preferredWidth: 1.2
             Layout.preferredHeight: 1
 
             Material.elevation: 6
@@ -200,10 +260,8 @@ Pane {
                 id: saveSettings
                 width: parent.width
                 height: parent.height
-                /*anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.left: parent.left
-                anchors.right: parent.right*/
+
+                enabled: !acquisitionSettings.acquisitionRunning
             }
 
         }

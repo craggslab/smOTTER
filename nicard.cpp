@@ -154,9 +154,9 @@ void NICard::setExperimentLength(std::chrono::minutes length) { m_experimentLeng
 
 bool NICard::isRunning() { return m_running; }
 
-std::optional<std::string> NICard::prime()
+std::optional<std::string> NICard::prime(bool live)
 {
-    if (auto err = setupTriggers(); err.has_value())
+    if (auto err = setupTriggers(live); err.has_value())
     {
         clearTasks();
         return err.value();
@@ -241,7 +241,7 @@ std::optional<std::string> NICard::checkNIDAQError(int32 error)
     return std::nullopt;
 }
 
-std::optional<std::string> NICard::setupTriggers()
+std::optional<std::string> NICard::setupTriggers(bool live)
 {
     if (m_laserControlResolution*100 > m_alexPeriod)
         return std::make_optional("Alex period (" + std::to_string(m_alexPeriod.count()) + "us) too small! Should be at least 100 * the Laser Control Resolution (" + std::to_string(m_laserControlResolution.count()) + "ns)");
@@ -274,7 +274,15 @@ std::optional<std::string> NICard::setupTriggers()
     RET_IF_FAILED(DAQmxCreateDOChan(m_triggerTask, (m_deviceName + "/" + m_donorDetectorGate).c_str(), "Donor Detector Gate Signal", DAQmx_Val_ChanForAllLines));
     RET_IF_FAILED(DAQmxCreateDOChan(m_triggerTask, (m_deviceName + "/" + m_acceptorDetectorGate).c_str(), "Acceptor Detector Gate Signal", DAQmx_Val_ChanForAllLines));
 
-    RET_IF_FAILED(DAQmxCfgSampClkTiming(m_triggerTask, nullptr, static_cast<float64>(DORate), DAQmx_Val_Rising, DAQmx_Val_FiniteSamps, static_cast<uInt64>(nDOSamples.count())));
+    if (live)
+    {
+        RET_IF_FAILED(DAQmxCfgSampClkTiming(m_triggerTask, nullptr, static_cast<float64>(DORate), DAQmx_Val_Rising, DAQmx_Val_ContSamps, 4000));
+    }
+    else
+    {
+        RET_IF_FAILED(DAQmxCfgSampClkTiming(m_triggerTask, nullptr, static_cast<float64>(DORate), DAQmx_Val_Rising, DAQmx_Val_FiniteSamps, static_cast<uInt64>(nDOSamples.count())));
+    }
+
     RET_IF_FAILED(DAQmxRegisterDoneEvent(m_triggerTask, 0, &AcquisitionFinishedCallback, this));
 
     RET_IF_FAILED(DAQmxWriteDigitalLines(m_triggerTask, static_cast<int32>(traceSize), false, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, DOValues.data(), nullptr, nullptr));
@@ -501,4 +509,10 @@ std::optional<std::string> NICard::readPhotons()
 PhotonStore& NICard::getPhotonStore()
 {
     return m_photonStore;
+}
+
+
+NICard::~NICard()
+{
+    stop();
 }

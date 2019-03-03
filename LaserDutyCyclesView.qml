@@ -2,118 +2,134 @@ import QtQuick 2.0
 import QtQuick.Controls 2.5
 import QtQuick.Layouts 1.12
 
-GridLayout {
-    rows: 5
-    columns: 3
+ScrollView {
+    id: scrollView
+    property int sbWidth: ScrollBar.vertical.width
 
-    Label {
-        Layout.alignment: Qt.AlignHCenter
-        text: "Donor Duty Cycle:"
-    }
-
-    Label {}
-
-    Label {
-        Layout.alignment: Qt.AlignHCenter
-        text: qsTr("Acceptor Duty Cycle:")
-    }
-
-    SpinBox {
-        id: donorOffTimeSpinBox
-        Layout.alignment: Qt.AlignHCenter
-        editable: true
-
-        onValueChanged: dataSource.setDonorLaserOffPercentage(value)
-
-        value: 0
-        from: 0
-        to: 100 - donorOnTimeSpinBox.value
-    }
-
-    Label {
-        Layout.alignment: Qt.AlignHCenter
-        text: qsTr("OFF")
-        font.bold: true
-    }
-
-    SpinBox {
-        id: acceptorOffTimeSpinBox
-        Layout.alignment: Qt.AlignHCenter
-        editable: true
-
-        onValueChanged: dataSource.setAcceptorLaserOffPercentage(value)
-
-        value: 50
-        from: 0
-        to: 100 - acceptorOnTimeSpinBox.value
-    }
+    clip:true
 
 
-    SpinBox {
-        id: donorOnTimeSpinBox
-        Layout.alignment: Qt.AlignHCenter
-        editable: true
+    property alias donorOffPercent: donorOffTimeSpinBox.value
+    property alias donorOnPercent: donorOnTimeSpinBox.value
+    property alias acceptorOffPercent: acceptorOffTimeSpinBox.value
+    property alias acceptorOnPercent: acceptorOnTimeSpinBox.value
+    property alias alexPeriod: alexPeriodSpinBox.value
 
-        onValueChanged: dataSource.setDonorLaserOnPercentage(value)
+    GridLayout {
+        width: Math.max(implicitWidth, scrollView.availableWidth - sbWidth - 10)
 
-        value: 45
-        from: 0
-        to: 100 - donorOffTimeSpinBox.value
-    }
+        rows: 5
+        columns: 3
 
-    Label {
-        Layout.alignment: Qt.AlignHCenter
-        text: qsTr("ON")
-        font.bold: true
-    }
+        Label {
+            Layout.alignment: Qt.AlignHCenter
+            text: "Donor Duty Cycle:"
+        }
 
-    SpinBox {
-        id: acceptorOnTimeSpinBox
-        Layout.alignment: Qt.AlignHCenter
-        editable: true
+        Label {}
 
-        onValueChanged: dataSource.setAcceptorLaserOnPercentage(value)
+        Label {
+            Layout.alignment: Qt.AlignHCenter
+            text: qsTr("Acceptor Duty Cycle:")
+        }
 
-        value: 45
-        from: 0
-        to: 100 - acceptorOffTimeSpinBox.value
-    }
+        SpinBox {
+            id: donorOffTimeSpinBox
+            Layout.alignment: Qt.AlignHCenter
+            editable: true
+
+            onValueChanged: dataSource.setDonorLaserOffPercentage(value)
+
+            value: 0
+            from: 0
+            to: 100 - donorOnTimeSpinBox.value
+        }
+
+        Label {
+            Layout.alignment: Qt.AlignHCenter
+            text: qsTr("OFF")
+            font.bold: true
+        }
+
+        SpinBox {
+            id: acceptorOffTimeSpinBox
+            Layout.alignment: Qt.AlignHCenter
+            editable: true
+
+            onValueChanged: dataSource.setAcceptorLaserOffPercentage(value)
+
+            value: 50
+            from: 0
+            to: 100 - acceptorOnTimeSpinBox.value
+        }
 
 
-    SpinBox {
-        Layout.alignment: Qt.AlignHCenter
-        enabled: false
-        value: 100 - donorOffTimeSpinBox.value - donorOnTimeSpinBox.value
-    }
+        SpinBox {
+            id: donorOnTimeSpinBox
+            Layout.alignment: Qt.AlignHCenter
+            editable: true
 
-    Label {
-        Layout.alignment: Qt.AlignHCenter
-        text: qsTr("OFF")
-        font.bold: true
-    }
+            onValueChanged: dataSource.setDonorLaserOnPercentage(value)
 
-    SpinBox {
-        Layout.alignment: Qt.AlignHCenter
-        enabled: false
-        value: 100 - acceptorOffTimeSpinBox.value - acceptorOnTimeSpinBox.value
-    }
+            value: 45
+            from: 0
+            to: 100 - donorOffTimeSpinBox.value
+        }
 
-    Label {
-        Layout.alignment: Qt.AlignRight
-        text: qsTr("ALEX Period (us):")
-    }
+        Label {
+            Layout.alignment: Qt.AlignHCenter
+            text: qsTr("ON")
+            font.bold: true
+        }
 
-    SpinBox {
-        id: alexPeriodSpinBox
-        Layout.alignment: Qt.AlignLeft
-        Layout.columnSpan: 2
+        SpinBox {
+            id: acceptorOnTimeSpinBox
+            Layout.alignment: Qt.AlignHCenter
+            editable: true
 
-        onValueChanged: dataSource.setAlexPeriod(value)
+            onValueChanged: dataSource.setAcceptorLaserOnPercentage(value)
 
-        from: 1
-        to: 500
-        value: 100
-        editable: true
+            value: 45
+            from: 0
+            to: 100 - acceptorOffTimeSpinBox.value
+        }
+
+
+        SpinBox {
+            Layout.alignment: Qt.AlignHCenter
+            enabled: false
+            value: 100 - donorOffTimeSpinBox.value - donorOnTimeSpinBox.value
+        }
+
+        Label {
+            Layout.alignment: Qt.AlignHCenter
+            text: qsTr("OFF")
+            font.bold: true
+        }
+
+        SpinBox {
+            Layout.alignment: Qt.AlignHCenter
+            enabled: false
+            value: 100 - acceptorOffTimeSpinBox.value - acceptorOnTimeSpinBox.value
+        }
+
+        Label {
+            Layout.alignment: Qt.AlignRight
+            text: qsTr("ALEX Period (us):")
+        }
+
+        SpinBox {
+            id: alexPeriodSpinBox
+            Layout.alignment: Qt.AlignLeft
+            Layout.columnSpan: 2
+
+            onValueChanged: dataSource.setAlexPeriod(value)
+
+            from: 1
+            to: 500
+            value: 100
+            editable: true
+        }
     }
 
     function sendValuesToNICard()

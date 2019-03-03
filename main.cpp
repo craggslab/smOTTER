@@ -9,13 +9,14 @@
 #include <filesystem>
 
 #include "nidatasource.h"
+#include "radialbar.h"
 
 int main(int argc, char *argv[])
 {
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QApplication app(argc, argv);
 
-    qDebug() << QString::fromStdString(std::filesystem::current_path().string());
+    qmlRegisterType<RadialBar>("RadialBar", 1, 0, "RadialBar");
 
     app.setApplicationName("smfBox Open Acquisition");
     app.setOrganizationName("University of Sheffield, Craggs Lab");

@@ -2,164 +2,301 @@ import QtQuick 2.0
 import QtQuick.Controls 2.5
 import QtQuick.Layouts 1.12
 import QtQuick.Controls.Styles 1.4
+import QtQuick.Controls.Material 2.3
+import RadialBar 1.0
 
-GridLayout {
+ScrollView
+{
+    id: scrollView
+    property int sbWidth: ScrollBar.vertical.width
+    clip: true
+
     property bool acquisitionRunning: false;
+    property bool isLive: false
     onAcquisitionRunningChanged: {
-        if (!acquisitionRunning)
+        if (!acquisitionRunning && !isLive)
             dataSource.saveNewPhotons(true);
     }
 
-    columns: 2
-    rows: 3
+    property alias savePeriodically: saveIntervalCheckBox.checked
+    property alias saveInterval: saveIntervalSpinBox.value
+    property alias expLength: experimentLengthSpinBox.value
 
-    Label {
-        text: qsTr("Experiment Length (mins)")
-    }
+    GridLayout {
+        width: Math.max(implicitWidth, scrollView.availableWidth - sbWidth - 10)
 
-    SpinBox {
-        id: experimentLengthSpinBox
-        editable: true
+           columns: 4
+        rows: 3
 
-        onValueChanged: dataSource.setExperimentLength(value)
+        Label {
+            Layout.column: 0
+            Layout.row: 0
+            text: qsTr("Experiment Length (mins)")
+        }
 
-        value: 60
-        from: 1
-        to: 1440
-    }
+        SpinBox {
+            id: experimentLengthSpinBox
 
-    CheckBox {
-        checked: true
-        text: qsTr("Save Interval (mins): ")
-    }
+            Layout.column: 1
+            Layout.row: 0
 
-    SpinBox {
-        editable: true
-        value: 1
+            editable: true
 
-        from: 1
-        to: 5
-    }
+            onValueChanged: dataSource.setExperimentLength(value)
 
-    Frame {
-        Layout.columnSpan: 2
-        Layout.fillHeight: true
-        Layout.fillWidth: true
+            enabled: !acquisitionRunning
 
-        ColumnLayout {
+            value: 60
+            from: 1
+            to: 1440
+        }
 
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
+        Label {}
 
-            GridLayout {
-                rows: 2
-                columns: 3
+        CheckBox {
+            id: saveIntervalCheckBox
 
-                Label {
-                    text: qsTr("Total")
+            Layout.column: 0
+            Layout.row: 1
+
+            enabled: !acquisitionRunning
+
+            checked: true
+            text: qsTr("Save Interval (mins): ")
+
+        }
+
+        SpinBox {
+            id: saveIntervalSpinBox
+
+            Layout.column: 1
+            Layout.row: 1
+
+            editable: true
+            value: 1
+
+            enabled: !acquisitionRunning
+
+            from: 1
+            to: 5
+        }
+
+        Pane {
+            id: tmp
+            width: nextSaveProgressBar.width
+            height: nextSaveProgressBar.height
+            Layout.alignment: Qt.AlignCenter
+
+            background: RadialBar {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                id: nextSaveProgressBar
+
+                dialType: RadialBar.FullDial
+                startAngle: 180.0
+                minValue: 0
+                maxValue: saveIntervalSpinBox.value
+                value: saveIntervalCheckBox.checked ? (refreshProgressBarTimer.timeSoFar/60000.0) % saveIntervalSpinBox.value : 0
+                backgroundColor: "transparent"
+                foregroundColor: Material.primary
+                progressColor: Material.accent
+                showText: false
+
+                dialWidth: 4
+                width: 32
+                height: 32
+            }
+        }
+
+        Frame {
+            Layout.columnSpan: 4
+
+            Layout.column: 0
+            Layout.row: 2
+
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+
+            ColumnLayout {
+
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+
+                GridLayout {
+                    rows: 2
+                    columns: 3
+
+                    Label {
+                        text: qsTr("Total")
+                    }
+
+                    Label {
+                        Layout.alignment: Qt.AlignRight
+                        text: qsTr("Donor Photons:")
+                    }
+
+                    Label {
+                        id: totalDonorPhotonsLabel
+                        text: qsTr("0")
+                    }
+
+                    Label {
+                        text: qsTr("Total")
+                    }
+
+                    Label {
+                        Layout.alignment: Qt.AlignRight
+                        text: qsTr("Acceptor Photons:")
+                    }
+
+                    Label {
+                        id: totalAcceptorPhotonsLabel
+                        text: qsTr("0")
+                    }
                 }
 
                 Label {
+                    text: qsTr("Experiment Progress:")
+                }
+
+                Pane {
+                    id: experimentProgressBar
+                    property alias value: progress.value
+                    property int hoursRemaining: 0
+                    property int minutesRemaining: 0
+                    property int secondsRemaining: 0
+
+
+                    Layout.fillWidth: true
+
+                    background:  ProgressBar {
+                        id: progress
+
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+
+                        implicitHeight: 24
+                        background.height: 24
+                        contentItem.implicitHeight: 24
+
+                        value: refreshProgressBarTimer.timeSoFar / (experimentLengthSpinBox.value * 60000)
+                    }
+
+                    Label {
+                        anchors.fill: parent
+
+                        horizontalAlignment: Text.AlignHCenter
+
+                        text: timeToString(experimentProgressBar.hoursRemaining, experimentProgressBar.minutesRemaining, experimentProgressBar.secondsRemaining)
+
+                        function timeToString(hrs, mins, secs) {
+                            if (hrs > 0)
+                                return hrs + "h " + mins + "m " + secs + "s"
+                            else if (mins > 0)
+                                return mins + "m " + secs + "s"
+                            else if (secs > 0)
+                                return secs + "s"
+                            else
+                                return ""
+                        }
+                    }
+                }
+
+
+
+                Timer {
+                    id: refreshProgressBarTimer
+                    interval: 100.0
+
+                    property real timeSoFar: 0.0
+
+                    repeat: true
+
+                    onTriggered: {
+                        acquisitionRunning = dataSource.isRunning()
+                        if (acquisitionRunning) {
+                            if (!isLive)
+                            {
+                                timeSoFar += interval
+                                timeSoFarToTimeRemaining(Math.floor(timeSoFar/1000.0))
+                            }
+
+                            totalDonorPhotonsLabel.text = dataSource.getTotalDonorPhotons();
+                            totalAcceptorPhotonsLabel.text = dataSource.getTotalAcceptorPhotons();
+                        }
+                    }
+
+                    function timeSoFarToTimeRemaining(timeSoFar) {
+                        var secsToGo = experimentLengthSpinBox.value*60 - timeSoFar
+
+                        experimentProgressBar.hoursRemaining = Math.floor(secsToGo/3600)
+                        secsToGo = secsToGo % 3600
+
+                        experimentProgressBar.minutesRemaining = Math.floor(secsToGo/60)
+
+                        experimentProgressBar.secondsRemaining = secsToGo % 60
+                    }
+                }
+
+                Timer {
+                    id: saveTimer
+                    interval: saveIntervalSpinBox.value * 60000.0
+                    repeat: true
+
+                    running: acquisitionRunning && saveIntervalCheckBox.checked
+
+                    onTriggered: {
+                        dataSource.saveNewPhotons(false);
+                    }
+                }
+
+                RowLayout {
                     Layout.alignment: Qt.AlignRight
-                    text: qsTr("Donor Photons:")
-                }
 
-                Label {
-                    id: totalDonorPhotonsLabel
-                    text: qsTr("0")
-                }
+                    Button {
+                        text: qsTr("LIVE")
 
-                Label {
-                    text: qsTr("Total")
-                }
+                        enabled: !acquisitionRunning
 
-                Label {
-                    Layout.alignment: Qt.AlignRight
-                    text: qsTr("Acceptor Photons:")
-                }
+                        onClicked: {
+                            isLive = true
+                            dataSource.startAcquisition(true) //TODO add live
+                            refreshProgressBarTimer.timeSoFar = 0.0
+                            refreshProgressBarTimer.start()
+                        }
+                    }
 
-                Label {
-                    id: totalAcceptorPhotonsLabel
-                    text: qsTr("0")
-                }
-            }
+                    Button {
+                        text: qsTr("START")
 
-            Label {
-                text: qsTr("Experiment Progress:")
-            }
+                        enabled: !acquisitionRunning
 
-            ProgressBar {
-                id: experimentProgressBar
-                Layout.fillWidth: true
+                        onClicked: {
+                            isLive = false
+                            dataSource.startAcquisition()
+                            refreshProgressBarTimer.timeSoFar = 0.0
+                            refreshProgressBarTimer.start()
+                        }
+                    }
 
-                implicitHeight: 24
-                background.height: 24
-                contentItem.implicitHeight: 24
+                    Button {
+                        text: qsTr("STOP")
 
-                value: refreshProgressBarTimer.timeSoFar / (experimentLengthSpinBox.value * 60000)
-            }
+                        enabled: acquisitionRunning
 
-            Timer {
-                id: refreshProgressBarTimer
-                interval: 100.0
-
-                property real timeSoFar: 0.0
-
-                repeat: true
-
-                onTriggered: {
-                    acquisitionRunning = dataSource.isRunning()
-                    if (acquisitionRunning) {
-                        timeSoFar += interval
-                        totalDonorPhotonsLabel.text = dataSource.getTotalDonorPhotons();
-                        totalAcceptorPhotonsLabel.text = dataSource.getTotalAcceptorPhotons();
+                        onClicked: {
+                            dataSource.stopAcquisition()
+                            refreshProgressBarTimer.stop()
+                            refreshProgressBarTimer.timeSoFar = 0.0
+                            acquisitionRunning = false
+                        }
                     }
                 }
             }
-
-            Timer {
-                id: saveTimer
-                interval: 60000.0
-                repeat: true
-
-                running: acquisitionRunning;
-
-                onTriggered: {
-                    dataSource.saveNewPhotons(false);
-                }
-            }
-
-            RowLayout {
-                Layout.alignment: Qt.AlignRight
-
-                Button {
-                    text: qsTr("START")
-
-                    enabled: !acquisitionRunning;
-
-                    onClicked: {
-                        dataSource.startAcquisition()
-                        refreshProgressBarTimer.timeSoFar = 0.0
-                        refreshProgressBarTimer.start()
-                    }
-                }
-
-                Button {
-                    text: qsTr("STOP")
-
-                    enabled: acquisitionRunning;
-
-                    onClicked: {
-                        dataSource.stopAcquisition()
-                        refreshProgressBarTimer.stop()
-                        refreshProgressBarTimer.timeSoFar = 0.0
-                        acquisitionRunning = false
-                    }
-                }
-            }
-
         }
     }
 
@@ -172,4 +309,3 @@ GridLayout {
         onSendValues: sendValuesToNICard();
     }
 }
-

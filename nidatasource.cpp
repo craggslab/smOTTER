@@ -148,18 +148,21 @@ void NIDataSource::setUserAffiliation(const QString& userAffiliation) { m_export
 
 bool NIDataSource::isRunning() { return m_device->isRunning(); }
 
-bool NIDataSource::startAcquisition()
+bool NIDataSource::startAcquisition(bool live)
 {
     m_lastSavedPhoton = std::nullopt;
 
-    auto res = m_exporter.createFile();
-    if (res.has_value())
+    if (!live)
     {
-        emit error(QString::fromStdString(res.value()));
-        return false;
+        auto res = m_exporter.createFile();
+        if (res.has_value())
+        {
+            emit error(QString::fromStdString(res.value()));
+            return false;
+        }
     }
 
-    res = m_device->prime();
+    auto res = m_device->prime(live);
     if (res.has_value())
     {
         emit error(QString::fromStdString(res.value()));
@@ -267,7 +270,5 @@ void NIDataSource::saveNewPhotons(bool endOfAcquisition)
     {
         if (auto [_, res] = m_saveFuture.get(); res.has_value())
             emit error(QString::fromStdString(res.value()));
-
-        std::cout << "Done too" << std::endl;
     }
 }

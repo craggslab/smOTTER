@@ -19,6 +19,7 @@ class NICard
 {
 public:
     NICard(const std::string& deviceName = "");
+    ~NICard();
 
     static std::vector<std::string> getAvailableDevices();
     std::vector<std::string> getDigitalOutLines() const;
@@ -52,7 +53,7 @@ public:
 
     bool isRunning();
 
-    std::optional<std::string> prime();
+    std::optional<std::string> prime(bool live);
     std::optional<std::string> start();
     std::optional<std::string> stop();
     std::chrono::milliseconds timeSinceAcqStart();
@@ -68,7 +69,7 @@ private:
                                               std::list<Photon>& newPhotons, std::unordered_map<uint64_t, PhotonBlock>& newPhotonsBinned);
     std::optional<std::string> readPhotons();
 
-    std::optional<std::string> setupTriggers();
+    std::optional<std::string> setupTriggers(bool live);
     std::optional<std::string> setupCounters();
 
     std::optional<std::string> clearTriggers();

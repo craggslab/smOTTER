@@ -17,7 +17,8 @@ SOURCES += \
     nicard.cpp \
     nidatasource.cpp \
     photon.cpp \
-    photonhdf5exporter.cpp
+    photonhdf5exporter.cpp \
+    radialbar.cpp
 
 RESOURCES += qml.qrc
 
@@ -45,7 +46,8 @@ HEADERS += \
     nidatasource.h \
     photon.h \
     photonhdf5exporter.h \
-    photonhdf5helper.h
+    photonhdf5helper.h \
+    radialbar.h
 
 win32:CONFIG(release, debug|release): LIBS += $$PWD/../HDF5/lib64/libhdf5.lib
 else:win32:CONFIG(debug, debug|release): LIBS += $$PWD/../HDF5/lib64/libhdf5_D.lib

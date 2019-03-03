@@ -90,7 +90,7 @@ public slots:
 
 
     bool isRunning();
-    bool startAcquisition();
+    bool startAcquisition(bool live = false);
     bool stopAcquisition();
     qint64 timeSinceAcqStart();
 

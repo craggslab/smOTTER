@@ -434,11 +434,6 @@ ScrollView {
                 }
             }
         }
-
-        Button {
-            text: "Test"
-            onClicked: dataSource.saveNewPhotons()
-        }
     }
 
 }

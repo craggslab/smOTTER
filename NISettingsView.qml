@@ -7,10 +7,21 @@ ScrollView {
     id: scrollView
 
     property int sbWidth: ScrollBar.vertical.width
-
     ScrollBar.vertical.policy: ScrollBar.AlwaysOn
-
     clip: true
+
+    property alias deviceDefault: deviceComboBox.defaultStr
+    property alias donorLaserPinDefault: donorLaserPinComboBox.defaultStr
+    property alias acceptorLaserPinDefault: acceptorLaserPinComboBox.defaultStr
+    property alias donorDetectorCounterDefualt: donorDetectorCounterComboBox.defaultStr
+    property alias acceptorDetectorCounterDefault: acceptorDetectorCounterComboBox.defaultStr
+    property alias donorDetectorPinDefault: donorDetectorPinComboBox.defaultStr
+    property alias acceptorDetectorPinDefault: acceptorDetectorPinComboBox.defaultStr
+    property alias donorDetectorGateDefault: donorDetectorGateComboBox.defaultStr
+    property alias acceptorDetectorGateDefault: acceptorDetectorGateComboBox.defaultStr
+    property alias timebaseDefault: timebaseComboBox.defaultStr
+    property alias laserControlResolution: laserControlResSpinBox.value
+    property alias timestampAdjustmentValue: timestampAdjustmentSpinBox.value
 
     GridLayout {
         width: Math.max(implicitWidth, scrollView.availableWidth - sbWidth - 10)
@@ -32,12 +43,19 @@ ScrollView {
             Layout.fillWidth: true
 
             ComboBox {
+                id: deviceComboBox
                 Material.theme: Material.Light
+
+                property string defaultStr: "Dev1"
 
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 model: dataSource.availableDevices
-                onCurrentTextChanged: dataSource.setCurrentDevice(currentText)
+                onCurrentTextChanged: {
+                    if (!currentText === "")
+                        defaultStr = currentText
+                    dataSource.setCurrentDevice(currentText)
+                }
             }
 
             Button {
@@ -65,9 +83,19 @@ ScrollView {
             Layout.fillHeight: true
             Layout.fillWidth: true
 
+            property bool validDevice: false
+            property string defaultStr: "port0/line0"
+
+            currentIndex: findIndexOfDefault(model, defaultStr)
+
+            onModelChanged: validDevice = deviceComboBox.currentText !== ""
+
             model: dataSource.digitalOutLines
-            onModelChanged: currentIndex = findIndexOfDefault(model, qsTr("port0/line0"))
-            onCurrentTextChanged: dataSource.setDonorLaserPin(currentText)
+            onCurrentTextChanged: {
+                if (validDevice)
+                    defaultStr = currentText
+                dataSource.setDonorLaserPin(currentText)
+            }
         }
 
         Label {
@@ -84,9 +112,19 @@ ScrollView {
             Layout.fillHeight: true
             Layout.fillWidth: true
 
+            property bool validDevice: false
+            property string defaultStr: "port0/line1"
+
+            currentIndex: findIndexOfDefault(model, defaultStr)
+
             model: dataSource.digitalOutLines
-            onModelChanged: currentIndex = findIndexOfDefault(model, qsTr("port0/line1"))
-            onCurrentTextChanged: dataSource.setAcceptorLaserPin(currentText)
+            onModelChanged: validDevice = deviceComboBox.currentText !== ""
+
+            onCurrentTextChanged: {
+                if (validDevice)
+                    defaultStr = currentText
+                dataSource.setAcceptorLaserPin(currentText)
+            }
         }
 
         Label {
@@ -103,9 +141,20 @@ ScrollView {
             Layout.fillHeight: true
             Layout.fillWidth: true
 
+            property bool validDevice: false
+            property string defaultStr: "ctr0"
+
+            currentIndex: findIndexOfDefault(model, defaultStr)
+
             model: dataSource.counters
-            onModelChanged: currentIndex = findIndexOfDefault(model, "ctr0")
-            onCurrentTextChanged: dataSource.setDonorDetectorCounter(currentText)
+
+            onModelChanged: validDevice = deviceComboBox.currentText !== ""
+
+            onCurrentTextChanged: {
+                if (validDevice)
+                    defaultStr = currentText
+                dataSource.setDonorDetectorCounter(currentText)
+            }
         }
 
         Label {
@@ -122,9 +171,20 @@ ScrollView {
             Layout.fillHeight: true
             Layout.fillWidth: true
 
+            property bool validDevice: false
+            property string defaultStr: "ctr1"
+
+            currentIndex: findIndexOfDefault(model, defaultStr)
+
             model: dataSource.counters
-            onModelChanged: currentIndex = findIndexOfDefault(model, "ctr1")
-            onCurrentTextChanged: dataSource.setAcceptorDetectorCounter(currentText)
+
+            onModelChanged: validDevice = deviceComboBox.currentText !== ""
+
+            onCurrentTextChanged: {
+                if (validDevice)
+                    defaultStr = currentText
+                dataSource.setAcceptorDetectorCounter(currentText)
+            }
         }
 
         Label {
@@ -141,9 +201,20 @@ ScrollView {
             Layout.fillHeight: true
             Layout.fillWidth: true
 
+            property bool validDevice: false
+            property string defaultStr: "PFI1"
+
+            currentIndex: findIndexOfDefault(model, defaultStr)
+
             model: dataSource.counterLines
-            onModelChanged: currentIndex = findIndexOfDefault(model, "PFI1");
-            onCurrentTextChanged: dataSource.setDonorDetectorPin(currentText)
+
+            onModelChanged: validDevice = deviceComboBox.currentText !== ""
+
+            onCurrentTextChanged: {
+                if (validDevice)
+                    defaultStr = currentText
+                dataSource.setDonorDetectorPin(currentText)
+            }
         }
 
         Label {
@@ -160,9 +231,20 @@ ScrollView {
             Layout.fillHeight: true
             Layout.fillWidth: true
 
+            property bool validDevice: false
+            property string defaultStr: "PFI2"
+
+            currentIndex: findIndexOfDefault(model, defaultStr)
+
             model: dataSource.counterLines
-            onModelChanged: currentIndex = findIndexOfDefault(model, "PFI2");
-            onCurrentTextChanged: dataSource.setAcceptorDetectorPin(currentText)
+
+            onModelChanged: validDevice = deviceComboBox.currentText !== ""
+
+            onCurrentTextChanged: {
+                if (validDevice)
+                    defaultStr = currentText
+                dataSource.setAcceptorDetectorPin(currentText)
+            }
         }
 
         Label {
@@ -179,9 +261,20 @@ ScrollView {
             Layout.fillHeight: true
             Layout.fillWidth: true
 
+            property bool validDevice: false
+            property string defaultStr: "port0/line8"
+
+            currentIndex: findIndexOfDefault(model, defaultStr)
+
             model: dataSource.digitalOutLines
-            onModelChanged: currentIndex = findIndexOfDefault(model, "port0/line8")
-            onCurrentTextChanged: dataSource.setDonorDetectorGate(currentText)
+
+            onModelChanged: validDevice = deviceComboBox.currentText !== ""
+
+            onCurrentTextChanged: {
+                if (validDevice)
+                    defaultStr = currentText
+                dataSource.setDonorDetectorGate(currentText)
+            }
         }
 
         Label {
@@ -198,9 +291,20 @@ ScrollView {
             Layout.fillHeight: true
             Layout.fillWidth: true
 
+            property bool validDevice: false
+            property string defaultStr: "port0/line9"
+
+            currentIndex: findIndexOfDefault(model, defaultStr)
+
             model: dataSource.digitalOutLines
-            onModelChanged: currentIndex = findIndexOfDefault(model, "port0/line9")
-            onCurrentTextChanged: dataSource.setAcceptorDetectorGate(currentText)
+
+            onModelChanged: validDevice = deviceComboBox.currentText !== ""
+
+            onCurrentTextChanged: {
+                if(validDevice)
+                    defaultStr = currentText
+                dataSource.setAcceptorDetectorGate(currentText)
+            }
         }
 
         Label {
@@ -217,9 +321,20 @@ ScrollView {
             Layout.fillHeight: true
             Layout.fillWidth: true
 
+            property bool validDevice: false
+            property string defaultStr: "100MHzTimebase"
+
+            currentIndex: findIndexOfDefault(model, defaultStr)
+
             model: dataSource.timebases
-            onModelChanged: currentIndex = findIndexOfDefault(model, "100MHzTimebase")
-            onCurrentTextChanged: dataSource.setTimebase(currentText)
+
+            onModelChanged: validDevice = deviceComboBox.currentText !== ""
+
+            onCurrentTextChanged: {
+                if (validDevice)
+                    defaultStr = currentText
+                dataSource.setTimebase(currentText)
+            }
         }
 
         Label {
