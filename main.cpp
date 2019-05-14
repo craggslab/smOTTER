@@ -10,6 +10,7 @@
 
 #include "nidatasource.h"
 #include "radialbar.h"
+#include "hexplot.h"
 
 int main(int argc, char *argv[])
 {
@@ -17,6 +18,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     qmlRegisterType<RadialBar>("RadialBar", 1, 0, "RadialBar");
+    REGISTER_HEX_PLOT_TYPES("HexPlot", 1, 0)
 
     app.setApplicationName("smfBox Open Acquisition");
     app.setOrganizationName("University of Sheffield, Craggs Lab");

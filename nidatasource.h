@@ -12,6 +12,7 @@
 #include "photon.h"
 #include "photonhdf5exporter.h"
 #include "nicard.h"
+#include "hexplot.h"
 
 QT_BEGIN_NAMESPACE
 class QQuickView;
@@ -98,7 +99,10 @@ public slots:
     quint64 getTotalAcceptorPhotons();
 
     void updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *AASeries, QAbstractSeries *DASeries, quint64 min_t, quint64 max_t);
+    void updateESHistogram(HexPlot::HexPlot *hexPlot, quint64 threshold_AA, quint64 threshold_DD_DA, quint64 min_t, quint64 max_t);
+
     void saveNewPhotons(bool endOfAcquisition);
+
 private:
     QStringList m_availableDevices;
     QQuickView *m_appViewer;

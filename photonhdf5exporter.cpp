@@ -128,7 +128,7 @@ std::optional<std::string> PhotonHDF5Exporter::createFile()
 
         // ----- Photon Data Group ------- //
         auto photonDataGroup = createGroup(PhotonHDF5::photon_data_name, PhotonHDF5::photon_data_desc, file);
-        createExpandableDataset(PhotonHDF5::timestamps_name, PhotonHDF5::timestamps_desc, H5::PredType::STD_U64LE, 9, photonDataGroup);
+        createExpandableDataset(PhotonHDF5::timestamps_name, PhotonHDF5::timestamps_desc, H5::PredType::STD_I64LE, 9, photonDataGroup);
         createExpandableDataset(PhotonHDF5::detectors_name, PhotonHDF5::detectors_desc, H5::PredType::STD_U8LE, 9, photonDataGroup);
 
         // ----- Timestamp Specs Group ------- //

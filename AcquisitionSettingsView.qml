@@ -264,7 +264,7 @@ ScrollView
 
                         onClicked: {
                             isLive = true
-                            dataSource.startAcquisition(true) //TODO add live
+                            dataSource.startAcquisition(true)
                             refreshProgressBarTimer.timeSoFar = 0.0
                             refreshProgressBarTimer.start()
                         }

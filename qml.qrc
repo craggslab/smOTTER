@@ -6,5 +6,6 @@
         <file>AcquisitionSettingsView.qml</file>
         <file>LaserDutyCyclesView.qml</file>
         <file>SaveSettingsView.qml</file>
+        <file>ESHistogramView.qml</file>
     </qresource>
 </RCC>

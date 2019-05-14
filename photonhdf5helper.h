@@ -164,7 +164,6 @@ H5::PredType createStringType(const std::string& str)
 
 void writeStringAttribute(const std::string& str, const std::string& name, H5::H5Object& object, bool utf8 = false)
 {
-    //auto strType = createStringType(str);
     auto strType = H5::StrType(H5::PredType::C_S1, str.length());
     if (utf8)
         strType.setCset(H5T_CSET_UTF8);

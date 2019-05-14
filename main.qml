@@ -144,6 +144,7 @@ Pane {
                     Layout.fillHeight: true
 
                     LiveTraceView {
+                        id: traceView
                         width: parent.width
                         height: parent.height
 
@@ -178,11 +179,7 @@ Pane {
 
         }
 
-
-
-
         GroupBox {
-            id: histoBox
             title: "ES Histogram"
 
             Layout.fillWidth: true
@@ -193,14 +190,11 @@ Pane {
 
             Material.elevation: 6
 
-            TextArea {
+            ESHistogramView {
+                id: esHistogram
                 anchors.fill: parent
 
-                text: "Coming soon..."
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-
-                enabled: false
+                acquisitionRunning: acquisitionSettings.acquisitionRunning
             }
         }
 
@@ -266,6 +260,26 @@ Pane {
 
         }
 
+    }
+
+    Timer {
+        id: refreshTimer
+        interval: 20
+        running: acquisitionSettings.acquisitionRunning
+        repeat: true
+
+        onTriggered: {
+            traceView.updateDisplay()
+            esHistogram.updateDisplay()
+        }
+
+        onRunningChanged: {
+            if (running)
+            {
+                traceView.resetDisplay()
+                esHistogram.resetDisplay()
+            }
+        }
     }
 
     Popup {

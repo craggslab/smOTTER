@@ -48,33 +48,25 @@ ChartView {
         useOpenGL: true
     }
 
-    Timer {
-        id: refreshTimer
-        interval: 20
-        running: acquisitionRunning
-        repeat: true
+    function updateDisplay() {
+        var t = dataSource.timeSinceAcqStart()
+        dataSource.updateLiveTrace(countsDD, countsAA, countsDA, axisX.min, t)
 
-        onTriggered: {
-            var t = dataSource.timeSinceAcqStart()
-            dataSource.updateLiveTrace(countsDD, countsAA, countsDA, axisX.min, t)
-
-            if (t > axisX.max)
-            {
-                axisX.min = axisX.max
-                axisX.max += 1000;
-            }
-        }
-
-        onRunningChanged: {
-            if (running)
-            {
-                countsAA.clear()
-                countsDD.clear()
-                countsDA.clear()
-
-                axisX.min = 0
-                axisX.max = 1000;
-            }
+        if (t > axisX.max)
+        {
+            axisX.min = axisX.max
+            axisX.max += 1000;
         }
     }
+
+    function resetDisplay() {
+        countsAA.clear()
+        countsDD.clear()
+        countsDA.clear()
+
+        axisX.min = 0
+        axisX.max = 1000
+    }
+
+
 }

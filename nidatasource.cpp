@@ -248,6 +248,43 @@ void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *A
     DATrace->replace(DAPoints);
 }
 
+void NIDataSource::updateESHistogram(HexPlot::HexPlot *hexPlot, quint64 threshold_AA, quint64 threshold_DD_DA, quint64 min_t, quint64 max_t) {
+    using namespace std::chrono;
+
+
+    if (!m_device->isRunning())
+        return;
+
+    std::list<QPointF> newData;
+
+    auto& store = m_device->getPhotonStore();
+    auto lock = store.getReadLockObject();
+    if (!lock.try_lock_for(10ms))
+        return;
+
+
+    for (auto t = min_t; t <= max_t; t++)
+    {
+        if (auto itr = store.findBin(t, lock); itr != store.binnedPhotons(lock).end())
+        {
+            if (itr->second.nAA < threshold_AA) continue;
+
+            auto DD_DA = itr->second.nDD + itr->second.nDA;
+            if (DD_DA < threshold_DD_DA) continue;
+
+            auto DA = static_cast<qreal>(itr->second.nDA);
+            auto DD_DA_AA = static_cast<qreal>(DD_DA + itr->second.nAA);
+
+            newData.emplace_back(QPointF{DA / DD_DA, DD_DA / DD_DA_AA});
+        }
+    }
+
+    lock.unlock();
+
+    if (newData.size() != 0)
+        hexPlot->addData(newData);
+}
+
 void NIDataSource::saveNewPhotons(bool endOfAcquisition)
 {
     auto& store = m_device->getPhotonStore();
