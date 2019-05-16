@@ -6,3 +6,5 @@ release/*
 *.vcxproj*
 smfBox_Settings.ini
 x64/*
+*.sln
+build/*
