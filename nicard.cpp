@@ -3,6 +3,8 @@
 #include <iostream>
 #include <algorithm>
 #include <sstream>
+#include <array>
+#include <numeric>
 
 using namespace std::chrono_literals;
 
@@ -21,6 +23,7 @@ NICard::NICard(const std::string& deviceName)
       m_triggerTask(nullptr),
       m_donorCounterTask(nullptr),
       m_acceptorCounterTask(nullptr),
+      m_laserPowerTask(nullptr),
       m_running(false),
       m_stopReadPhotons(false),
       m_totalAcceptorPhotons(0),
@@ -154,9 +157,15 @@ void NICard::setExperimentLength(std::chrono::minutes length) { m_experimentLeng
 
 bool NICard::isRunning() { return m_running; }
 
-std::optional<std::string> NICard::prime(bool live)
+NICard::NIResult NICard::prime(bool live)
 {
     if (auto err = setupTriggers(live); err.has_value())
+    {
+        clearTasks();
+        return err.value();
+    }
+
+    if (auto err = setupAnalogueReads(); err.has_value())
     {
         clearTasks();
         return err.value();
@@ -171,22 +180,27 @@ std::optional<std::string> NICard::prime(bool live)
     return std::nullopt;
 }
 
-std::optional<std::string> NICard::start()
+NICard::NIResult NICard::start(bool live)
 {
     {
-        auto lock = m_photonStore.getWriteLockObject();
-        lock.lock();
-        m_photonStore.clear(lock);
+        auto ph_lock = m_photonStore.getWriteLockObject();
+        auto lp_lock = m_photonStore.getLaserPowerWriteLockObject();
+        ph_lock.lock();
+        lp_lock.lock();
+        m_photonStore.clear(ph_lock, lp_lock);
     }
+
 
     RET_IF_FAILED(DAQmxStartTask(m_donorCounterTask));
     RET_IF_FAILED(DAQmxStartTask(m_acceptorCounterTask));
+    RET_IF_FAILED(DAQmxStartTask(m_laserPowerTask));
     RET_IF_FAILED(DAQmxStartTask(m_triggerTask));
 
     m_totalDonorPhotons = 0;
     m_totalAcceptorPhotons = 0;
     m_stopReadPhotons = false;
     m_readPhotonsResult = std::async(std::launch::async, &NICard::readPhotons, this);
+    m_laserPowerResult = std::async(std::launch::async, &NICard::readLaserPower, this);
 
     m_running = true;
     m_acquisitionStart = m_acquisitionClock.now();
@@ -194,32 +208,39 @@ std::optional<std::string> NICard::start()
     return std::nullopt;
 }
 
-std::optional<std::string> NICard::stop()
+NICard::NIResult NICard::stop()
 {
     std::lock_guard guard(m_stopAcquisitionMutex);
 
     m_stopReadPhotons = true;
 
-    std::optional<std::string> readPhotonsResult = std::nullopt;
+    std::array<NIResult, 3> results = { std::nullopt, std::nullopt, std::nullopt };
+
     if (m_readPhotonsResult.valid())
-        readPhotonsResult = m_readPhotonsResult.get();
+        results[0] = m_readPhotonsResult.get();
     else
-        readPhotonsResult = std::make_optional("Could not retrieve result of read photons thread!");
+        results[0] = std::make_optional("Could not retrieve result of read photons thread!");
 
     clearTasks();
 
+    if (m_laserPowerResult.valid())
+        results[1] = m_laserPowerResult.get();
+    else
+        results[1] = std::make_optional("Could not retrieve result of laser power thread!");
+
+
     m_running = false;
 
-    auto clearTriggersRes = clearTriggers();
+    results[2] = clearTriggers();
 
-    if (clearTriggersRes.has_value() && readPhotonsResult.has_value())
-        return std::make_optional(clearTriggersRes.value() + readPhotonsResult.value());
-    else if (clearTriggersRes.has_value())
-        return clearTriggersRes;
-    else if (readPhotonsResult.has_value())
-        return readPhotonsResult;
-    else
+    if (std::none_of(results.begin(), results.end(), [](auto r) { return r.has_value(); }))
+    {
         return std::nullopt;
+    }
+    else
+    {
+        return std::make_optional(std::transform_reduce(results.begin(), results.end(), std::string(), std::plus<>(), [](auto r) { return r.has_value() ? r.value() + "\n\n" : ""; }));
+    }
 }
 
 std::chrono::milliseconds NICard::timeSinceAcqStart()
@@ -227,7 +248,7 @@ std::chrono::milliseconds NICard::timeSinceAcqStart()
     return std::chrono::duration_cast<std::chrono::milliseconds>(m_acquisitionClock.now() - m_acquisitionStart);
 }
 
-std::optional<std::string> NICard::checkNIDAQError(int32 error)
+NICard::NIResult NICard::checkNIDAQError(int32 error)
 {
     if (DAQmxFailed(error))
     {
@@ -241,7 +262,7 @@ std::optional<std::string> NICard::checkNIDAQError(int32 error)
     return std::nullopt;
 }
 
-std::optional<std::string> NICard::setupTriggers(bool live)
+NICard::NIResult NICard::setupTriggers(bool live)
 {
     if (m_laserControlResolution*100 > m_alexPeriod)
         return std::make_optional("Alex period (" + std::to_string(m_alexPeriod.count()) + "us) too small! Should be at least 100 * the Laser Control Resolution (" + std::to_string(m_laserControlResolution.count()) + "ns)");
@@ -294,7 +315,38 @@ std::optional<std::string> NICard::setupTriggers(bool live)
     return std::nullopt;
 }
 
-std::optional<std::string> NICard::setupCounters()
+NICard::NIResult NICard::setupAnalogueReads()
+{
+    if (m_laserControlResolution*100 > m_alexPeriod)
+        return std::make_optional("Alex period (" + std::to_string(m_alexPeriod.count()) + "us) too small! Should be at least 100 * the Laser Control Resolution (" + std::to_string(m_laserControlResolution.count()) + "ns)");
+
+    if (m_alexPeriod % (m_laserControlResolution*100) != 0us)
+        return std::make_optional("Invalid alex period (" + std::to_string(m_alexPeriod.count()) + "us)! Alex period should be evenly divisible by 100*the laser control resolution (100 x " + std::to_string(m_laserControlResolution.count()) + "ns)!");
+
+    if (m_experimentLength % m_alexPeriod != 0min)
+        return std::make_optional("Invalid alex period (" + std::to_string(m_alexPeriod.count()) + "us)! Alex period should evenly divide the experement time (" + std::to_string(m_experimentLength.count()) + " minutes)");
+
+    auto AIRate = std::chrono::duration_cast<std::chrono::nanoseconds>(1s) / m_laserControlResolution;
+    //auto nAISamples = AIRate * std::chrono::duration_cast<std::chrono::seconds>(m_experimentLength);
+
+    RET_IF_FAILED(DAQmxCreateTask("Laser Power Read", &m_laserPowerTask));
+
+    //TODO: User selected channel
+    RET_IF_FAILED(DAQmxCreateAIVoltageChan(m_laserPowerTask, (m_deviceName + "/ai0").c_str(), "Laser Power", DAQmx_Val_NRSE, -10.0, 10.0, DAQmx_Val_Volts, nullptr));
+
+    RET_IF_FAILED(DAQmxCfgSampClkTiming(m_laserPowerTask, "", static_cast<float64>(AIRate)/100, DAQmx_Val_Rising, DAQmx_Val_ContSamps, 4000));
+    RET_IF_FAILED(DAQmxCfgDigEdgeStartTrig(m_laserPowerTask, ("/" + m_deviceName + "/do/StartTrigger").c_str(), DAQmx_Val_Rising));
+
+    //RET_IF_FAILED(DAQmxCfgSampClkTiming(m_laserPowerTask, ("/" + m_deviceName + "/do/StartTrigger").c_str(), static_cast<float64>(AIRate), DAQmx_Val_Rising, DAQmx_Val_FiniteSamps, static_cast<uInt64>(nAISamples.count())));
+
+    //auto samplesPerALEXPeriod = static_cast<uInt32>(m_alexPeriod / m_laserControlResolution);
+    //RET_IF_FAILED(DAQmxRegisterEveryNSamplesEvent(m_laserPowerTask, DAQmx_Val_Acquired_Into_Buffer, samplesPerALEXPeriod, 0, &LaserSamplesCallback, this));
+    //RET_IF_FAILED(DAQmxRegisterDoneEvent(m_laserPowerTask, 0, &LaserSamplesFinishedCallback, this));
+
+    return std::nullopt;
+}
+
+NICard::NIResult NICard::setupCounters()
 {
     float64 counterRate;
     auto timeBaseString = ("/" + m_deviceName + "/" + m_timebase);
@@ -344,7 +396,7 @@ std::optional<std::string> NICard::setupCounters()
     return std::nullopt;
 }
 
-std::optional<std::string> NICard::clearTriggers()
+NICard::NIResult NICard::clearTriggers()
 {
     if (m_deviceName == "" || m_donorLaserPin == "" || m_acceptorLaserPin == "" ||
             m_donorDetectorGate == "" || m_acceptorDetectorGate == "") return std::nullopt;
@@ -392,9 +444,16 @@ void NICard::clearTasks()
         DAQmxClearTask(m_acceptorCounterTask);
         m_acceptorCounterTask = nullptr;
     }
+
+    if (m_laserPowerTask != nullptr)
+    {
+        DAQmxStopTask(m_laserPowerTask);
+        DAQmxClearTask(m_laserPowerTask);
+        m_laserPowerTask = nullptr;
+    }
 }
 
-std::optional<std::string> NICard::readPhotonsIntoBuffer(TaskHandle counterTask, std::vector<uInt32> &buff) const
+NICard::NIResult NICard::readPhotonsIntoBuffer(TaskHandle counterTask, std::vector<uInt32> &buff) const
 {
     uInt32 nPhotons = 0;
     RET_IF_FAILED(DAQmxGetReadAvailSampPerChan(counterTask, &nPhotons));
@@ -408,7 +467,7 @@ std::optional<std::string> NICard::readPhotonsIntoBuffer(TaskHandle counterTask,
     return std::nullopt;
 }
 
-std::optional<std::string> NICard::analysePhotons(const std::vector<uInt32> &buffer, uInt32 &previousPhotonArrival, uInt64 &offset, FluorophoreType detector,
+NICard::NIResult NICard::analysePhotons(const std::vector<uInt32> &buffer, uInt32 &previousPhotonArrival, uInt64 &offset, FluorophoreType detector,
                                                   std::list<Photon>& newPhotons, std::unordered_map<uint64_t, PhotonBlock>& newPhotonsBinned)
 {
     using namespace std::chrono;
@@ -462,7 +521,7 @@ std::optional<std::string> NICard::analysePhotons(const std::vector<uInt32> &buf
     return std::nullopt;
 }
 
-std::optional<std::string> NICard::readPhotons()
+NICard::NIResult NICard::readPhotons()
 {
     uInt32 previousDonorArrivalTime = 0, previousAcceptorArrivalTime = 0;
     uInt64 donorOffsetValue = 0, acceptorOffsetValue = 0;
@@ -500,6 +559,33 @@ std::optional<std::string> NICard::readPhotons()
 
                 newPhotonsBinned.clear();
             }
+        }
+    }
+
+    return std::nullopt;
+}
+
+
+NICard::NIResult NICard::readLaserPower()
+{
+    auto powerList = std::list<float64>();
+    auto buffer = std::vector<float64>();
+
+    while (!m_stopReadPhotons)
+    {
+        uInt32 nSamples;
+        RET_IF_FAILED(DAQmxGetReadAvailSampPerChan(m_laserPowerTask, &nSamples));
+
+        buffer.resize(nSamples);
+        RET_IF_FAILED(DAQmxReadAnalogF64(m_laserPowerTask, static_cast<int32>(nSamples), DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByScanNumber, buffer.data(), nSamples, nullptr, nullptr));
+
+        std::copy(buffer.begin(), buffer.end(), std::back_inserter(powerList));
+
+        if (powerList.size() > 0)
+        {
+            auto lock = m_photonStore.getLaserPowerWriteLockObject();
+            if (lock.try_lock_for(1us))
+                m_photonStore.spliceNewLaserPowers(powerList, lock);
         }
     }
 

@@ -65,13 +65,25 @@ PhotonStore::PhotonWriteLock PhotonStore::getWriteLockObject() {
     return PhotonWriteLock(m_detectedPhotonsMutex, std::defer_lock);
 }
 
-void PhotonStore::clear(const PhotonWriteLock& lock)
+PhotonStore::LaserPowerLock PhotonStore::getLaserPowerLockObject() {
+    return LaserPowerLock(m_laserPowerMutex, std::defer_lock);
+}
+
+PhotonStore::LaserPowerWriteLock PhotonStore::getLaserPowerWriteLockObject() {
+    return LaserPowerWriteLock(m_laserPowerMutex, std::defer_lock);
+}
+
+void PhotonStore::clear(const PhotonWriteLock& ph_lock, const LaserPowerWriteLock& lp_lock)
 {
-    if (!lock.owns_lock())
-        throw std::invalid_argument("Lock object does not own lock (PhotonStore::clear)!");
+    if (!ph_lock.owns_lock())
+        throw std::invalid_argument("Photon lock object does not own lock (PhotonStore::clear)!");
+
+    if (!lp_lock.owns_lock())
+        throw std::invalid_argument("Laser power lcok object does not own lock (PhotonStore::clear)!");
 
     m_binnedPhotons.clear();
     m_photons.clear();
+    m_laserPowers.clear();
 }
 
 void PhotonStore::spliceNewPhotons(std::list<Photon>& newPhotons, const PhotonWriteLock& lock)
@@ -89,6 +101,13 @@ void PhotonStore::combinePhotonBlock(uint64_t bin, PhotonBlock& block, const Pho
     m_binnedPhotons[bin].combine(block);
 }
 
+void PhotonStore::spliceNewLaserPowers(std::list<double> &newLaserPowers, const LaserPowerWriteLock &lock) {
+    if (!lock.owns_lock())
+        throw std::invalid_argument("Cannot perform splice! Lock object does not own lock (PhotonStore::spliceNewLaserPowers");
+
+    m_laserPowers.splice(m_laserPowers.end(), newLaserPowers);
+}
+
 PhotonStore::IteratorStruct<PhotonStore::ConstPhotonIterator> PhotonStore::photons(const PhotonLock& lock) const
 {
     if (!lock.owns_lock())
@@ -102,6 +121,13 @@ PhotonStore::IteratorStruct<PhotonStore::ConstPhotonBlockIterator> PhotonStore::
         throw std::invalid_argument("Lock object does not own lock (PhotonStore::binnedPhotons)!");
 
     return IteratorStruct(m_binnedPhotons.cbegin(), m_binnedPhotons.cend());
+}
+PhotonStore::IteratorStruct<PhotonStore::ConstLaserPowerIterator> PhotonStore::laserPowers(const LaserPowerLock& lock) const
+{
+    if (!lock.owns_lock())
+        throw std::invalid_argument("Lock object does not own lock (PhotonStore::laserPowers)!");
+
+    return IteratorStruct(m_laserPowers.cbegin(), m_laserPowers.cend());
 }
 
 PhotonStore::ConstPhotonBlockIterator PhotonStore::findBin(uint64_t bin, const PhotonLock& lock) const

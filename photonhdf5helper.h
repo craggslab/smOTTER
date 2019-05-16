@@ -139,6 +139,12 @@ namespace PhotonHDF5 {
     const std::string detectors_name				= "detectors";
     const std::string detectors_desc				= "Array of pixel IDs for each timestamp.";
 
+    const std::string laser_power_name				= "laser_power";
+    const std::string laser_power_desc				= "Array containing the instantaneous laser power at several timepoints during the experiment";
+
+    const std::string laser_power_interval_name		= "laser_power_interval";
+    const std::string laser_power_interval_desc		= "The time between laser power readings";
+
 
     class bad_photon_hdf5_error : public std::exception
     {

@@ -108,8 +108,9 @@ private:
     QQuickView *m_appViewer;
 
     std::unique_ptr<NICard> m_device;
-    std::future<std::pair<PhotonStore::ConstPhotonIterator, std::optional<std::string>>> m_saveFuture;
+    std::future<PhotonHDF5Exporter::SaveResult> m_saveFuture;
     std::optional<PhotonStore::ConstPhotonIterator> m_lastSavedPhoton;
+    std::optional<PhotonStore::ConstLaserPowerIterator> m_lastSavedPower;
     PhotonHDF5Exporter m_exporter;
 };
 

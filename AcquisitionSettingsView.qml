@@ -25,7 +25,7 @@ ScrollView
     GridLayout {
         width: Math.max(implicitWidth, scrollView.availableWidth - sbWidth - 10)
 
-           columns: 4
+        columns: 4
         rows: 3
 
         Label {
@@ -247,7 +247,7 @@ ScrollView
                     interval: saveIntervalSpinBox.value * 60000.0
                     repeat: true
 
-                    running: acquisitionRunning && saveIntervalCheckBox.checked
+                    running: acquisitionRunning && saveIntervalCheckBox.checked && !isLive
 
                     onTriggered: {
                         dataSource.saveNewPhotons(false);

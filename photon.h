@@ -23,6 +23,11 @@ public:
     using ConstPhotonIterator = std::list<Photon>::const_iterator;
     using ConstPhotonBlockIterator = std::unordered_map<uint64_t, PhotonBlock>::const_iterator;
 
+    using LaserPowerMutex = std::shared_timed_mutex;
+    using LaserPowerLock = std::shared_lock<LaserPowerMutex>;
+    using LaserPowerWriteLock = std::unique_lock<LaserPowerMutex>;
+    using ConstLaserPowerIterator = std::list<double>::const_iterator;
+
     template<typename T>
     struct IteratorStruct {
         friend class PhotonStore;
@@ -49,13 +54,22 @@ public:
     IteratorStruct<ConstPhotonBlockIterator> binnedPhotons(const PhotonLock& lock) const;
     ConstPhotonBlockIterator findBin(uint64_t bin, const PhotonLock& lock) const;
 
+    LaserPowerLock getLaserPowerLockObject();
+    LaserPowerWriteLock getLaserPowerWriteLockObject();
+
+    IteratorStruct<ConstLaserPowerIterator> laserPowers(const LaserPowerLock& lock) const;
+
     void spliceNewPhotons(std::list<Photon>& newPhotons, const PhotonWriteLock& lock);
     void combinePhotonBlock(uint64_t bin, PhotonBlock& block, const PhotonWriteLock& lock);
-    void clear(const PhotonWriteLock& lock);
+    void spliceNewLaserPowers(std::list<double>& newLaserPowers, const LaserPowerWriteLock& lock);
+    void clear(const PhotonWriteLock& ph_lock, const LaserPowerWriteLock& lp_lock);
 private:
     PhotonMutex m_detectedPhotonsMutex;
+    LaserPowerMutex m_laserPowerMutex;
+
     std::list<Photon> m_photons;
     std::unordered_map<uint64_t, PhotonBlock> m_binnedPhotons;
+    std::list<double> m_laserPowers;
 };
 
 struct Photon

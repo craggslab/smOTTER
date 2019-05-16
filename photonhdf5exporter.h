@@ -11,10 +11,16 @@
 class PhotonHDF5Exporter
 {
 public:
+    using SaveResult = std::pair<std::pair<PhotonStore::ConstPhotonIterator, PhotonStore::ConstLaserPowerIterator>,
+        std::optional<std::string>>;
+
+
     PhotonHDF5Exporter();
 
     std::optional<std::string> createFile();
-    std::pair<PhotonStore::ConstPhotonIterator, std::optional<std::string>> savePhotons(std::optional<PhotonStore::ConstPhotonIterator> start_opt, PhotonStore& store);
+    SaveResult savePhotons(std::optional<PhotonStore::ConstPhotonIterator> ph_start_op,
+                           std::optional<PhotonStore::ConstLaserPowerIterator> lp_start_op,
+                           PhotonStore& store);
 
     void setFilename(const std::string& filename);
     void setAcquisitionDuration(const std::chrono::seconds& acquisitionDuration);

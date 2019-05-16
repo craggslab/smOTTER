@@ -18,6 +18,8 @@
 class NICard
 {
 public:
+    using NIResult = std::optional<std::string>;
+
     NICard(const std::string& deviceName = "");
     ~NICard();
 
@@ -53,26 +55,28 @@ public:
 
     bool isRunning();
 
-    std::optional<std::string> prime(bool live);
-    std::optional<std::string> start();
-    std::optional<std::string> stop();
+    NIResult prime(bool live);
+    NIResult start(bool live);
+    NIResult stop();
     std::chrono::milliseconds timeSinceAcqStart();
 
     PhotonStore& getPhotonStore();
 private:
     std::vector<std::string> getNIStrings(int32(*strFunc)(const char *, char *, uInt32), std::optional<std::string> removeFromBegining = std::nullopt) const;
     static std::vector<std::string> splitNIStrings(std::vector<char>& niStrings, std::optional<std::string> removeFromBegining = std::nullopt);
-    static std::optional<std::string> checkNIDAQError(int32 error);
+    static NIResult checkNIDAQError(int32 error);
 
-    std::optional<std::string> readPhotonsIntoBuffer(TaskHandle counterTask, std::vector<uInt32>& buff) const;
-    std::optional<std::string> analysePhotons(const std::vector<uInt32>& buffer, uInt32& previousValue, uInt64& offset, FluorophoreType detector,
+    NIResult readPhotonsIntoBuffer(TaskHandle counterTask, std::vector<uInt32>& buff) const;
+    NIResult analysePhotons(const std::vector<uInt32>& buffer, uInt32& previousValue, uInt64& offset, FluorophoreType detector,
                                               std::list<Photon>& newPhotons, std::unordered_map<uint64_t, PhotonBlock>& newPhotonsBinned);
-    std::optional<std::string> readPhotons();
+    NIResult readPhotons();
+    NIResult readLaserPower();
 
-    std::optional<std::string> setupTriggers(bool live);
-    std::optional<std::string> setupCounters();
+    NIResult setupTriggers(bool live);
+    NIResult setupAnalogueReads();
+    NIResult setupCounters();
 
-    std::optional<std::string> clearTriggers();
+    NIResult clearTriggers();
     void clearTasks();
 
     std::mutex m_stopAcquisitionMutex;
@@ -100,13 +104,16 @@ private:
 
     TaskHandle m_donorCounterTask;
     TaskHandle m_acceptorCounterTask;
+    TaskHandle m_laserPowerTask;
 
     bool m_running;
     std::chrono::steady_clock m_acquisitionClock;
     std::chrono::time_point<std::chrono::steady_clock> m_acquisitionStart;
 
     std::atomic<bool> m_stopReadPhotons;
-    std::future<std::optional<std::string>> m_readPhotonsResult;
+    std::future<NIResult> m_readPhotonsResult;
+    std::future<NIResult> m_laserPowerResult;
+
     std::atomic<uint64_t> m_totalAcceptorPhotons;
     std::atomic<uint64_t> m_totalDonorPhotons;
 

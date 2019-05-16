@@ -284,6 +284,11 @@ Pane {
 
     Popup {
         id: errorMessageDialog
+
+        Material.theme: Material.Dark
+        Material.primary: Material.BlueGrey
+        Material.accent: Material.Blue
+
         anchors.centerIn: parent
 
         modal: Qt.WindowModal

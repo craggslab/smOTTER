@@ -256,8 +256,8 @@ namespace HexPlot {
     {
         std::for_each(begin, end,
           [this](const QPointF& val) {
-            auto x = static_cast<quint8>(val.x() * m_nBinsX);
-            auto y = static_cast<quint8>((1.0 - val.y()) * m_nBinsY);
+            auto x = static_cast<quint8>(std::min(val.x(), 0.9999999999) * m_nBinsX);
+            auto y = static_cast<quint8>((1.0 - std::min(val.y(), 0.9999999999)) * m_nBinsY);
             auto idx = static_cast<size_t>(x + y * m_nBinsX);
 
             m_bins[idx]++;

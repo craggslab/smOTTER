@@ -17,7 +17,8 @@ NIDataSource::NIDataSource(QQuickView *appViewer, QObject *parent)
     : QObject(parent),
       m_appViewer(appViewer),
       m_device(std::make_unique<NICard>()),
-      m_lastSavedPhoton(std::nullopt)
+      m_lastSavedPhoton(std::nullopt),
+      m_lastSavedPower(std::nullopt)
 {
     updateAvailableDevices();
 }
@@ -87,6 +88,7 @@ void NIDataSource::setCurrentDevice(const QString& devName)
 {
     qDebug() << "Set Current Device Called";
     m_device = std::make_unique<NICard>(devName.toStdString());
+    qDebug() << "Set Current Device end";
     emit digitalOutLinesChanged();
     emit counterLinesChanged();
     emit timebasesChanged();
@@ -151,6 +153,7 @@ bool NIDataSource::isRunning() { return m_device->isRunning(); }
 bool NIDataSource::startAcquisition(bool live)
 {
     m_lastSavedPhoton = std::nullopt;
+    m_lastSavedPower = std::nullopt;
 
     if (!live)
     {
@@ -169,7 +172,7 @@ bool NIDataSource::startAcquisition(bool live)
         return false;
     }
 
-    res = m_device->start();
+    res = m_device->start(live);
     if (res.has_value())
     {
         emit error(QString::fromStdString(res.value()));
@@ -291,17 +294,18 @@ void NIDataSource::saveNewPhotons(bool endOfAcquisition)
 
     if (m_saveFuture.valid())
     {
-        auto res = m_saveFuture.get();
-        if (res.second.has_value())
+        auto [lastSaved, err] = m_saveFuture.get();
+        if (err.has_value())
         {
-            emit error(QString::fromStdString(res.second.value()));
+            emit error(QString::fromStdString(err.value()));
         }
 
-        m_lastSavedPhoton = res.first;
+        m_lastSavedPhoton = lastSaved.first;
+        m_lastSavedPower = lastSaved.second;
     }
 
     m_saveFuture = std::async(std::launch::async, &PhotonHDF5Exporter::savePhotons,
-                        &m_exporter, m_lastSavedPhoton, std::ref(store));
+                        &m_exporter, m_lastSavedPhoton, m_lastSavedPower, std::ref(store));
 
     if (endOfAcquisition)
     {
