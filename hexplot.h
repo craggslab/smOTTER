@@ -31,6 +31,7 @@ namespace HexPlot {
         Q_PROPERTY(quint32 nBinsX READ nBinsX WRITE setNBinsX)
         Q_PROPERTY(quint32 nBinsY READ nBinsY WRITE setNBinsY)
         Q_PROPERTY(HexLayout* plotLayout READ layout /*WRITE setLayout*/)
+        Q_PROPERTY(quint32 initialScaleMax READ initialScaleMax WRITE setInitialScaleMax)
 
     public:
         HexPlot(QQuickItem *parent = nullptr);
@@ -47,8 +48,10 @@ namespace HexPlot {
         quint32 nBinsY() const;
         void setNBinsY(quint32 bins);
 
+        quint32 initialScaleMax() const;
+        void setInitialScaleMax(quint32 max);
+
         HexLayout* layout();
-        //void setLayout(const HexLayout& layout);
 
         void paint(QPainter *painter);
 
@@ -72,7 +75,9 @@ namespace HexPlot {
         QString m_name;
         QColor m_color;
 
-        QColor m_borderColor = QColor(10, 10, 10, 255);
+        QColor m_borderColor = QColor(120, 120, 120, 255);
+        //QColor m_tickColor = QColor(120, 120, 120);
+        QColor m_textColor = QColor(230, 230, 230);
 
         quint32 m_nBinsX;
         quint32 m_nBinsY;

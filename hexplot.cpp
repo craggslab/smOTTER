@@ -44,7 +44,9 @@ namespace HexPlot {
     }
 
     HexLayout* HexPlot::layout() { return &m_layout; }
-    //void HexPlot::setLayout(const HexLayout &layout) { m_layout = layout; }
+
+    quint32 HexPlot::initialScaleMax() const { return m_initialScaleMax; }
+    void HexPlot::setInitialScaleMax(quint32 max) { m_initialScaleMax = max; }
 
     void HexPlot::drawHex(QPointF pos, qreal R, QPainter *painter, quint32 value, quint32 max)
     {
@@ -75,59 +77,60 @@ namespace HexPlot {
         painter->setBrush(QColor(40, 40, 40));
 
         if (horizontal) {
-        auto histoArea = m_layout.getHistoArea<Orientation::Horizontal>(plotArea);
+            auto histoArea = m_layout.getHistoArea<Orientation::Horizontal>(plotArea);
 
 
-        painter->drawRect(histoArea);
+            painter->drawRect(histoArea);
 
-        std::vector<uint32_t> marginal_bins(m_nBinsX);
-        auto max_bin = 0u;
-        for (size_t x = 0; x < m_nBinsX; x++)
-        {
-            for (size_t y = 0; y < m_nBinsY; y++)
-            marginal_bins[x] += m_bins[x + y * m_nBinsX];
-            max_bin = std::max(max_bin, marginal_bins[x]);
-        }
-
-        if (max_bin == 0) {
-            painter->restore();
-            return;
-        }
-
-        //painter->setBrush(getColor(20, 100));
-        painter->setPen(getColor(10, 100));
-        for (size_t x = 0; x < m_nBinsX; x++)
-        {
-            auto binCoefficient = static_cast<qreal>(marginal_bins[x]) / max_bin;
-            painter->setBrush(getColor(static_cast<quint32>(binCoefficient * 100), 100));
-            painter->drawRect(m_layout.hist.getBar<Orientation::Horizontal>(histoArea, m_nBinsX, x, binCoefficient));
-        }
-
-        } else {
-        auto histoArea = m_layout.getHistoArea<Orientation::Vertical>(plotArea);
-        painter->drawRect(histoArea);
-
-        std::vector<uint32_t> marginal_bins(m_nBinsY);
-        auto max_bin = 0u;
-        for (size_t y = 0; y < m_nBinsY; y++)
-        {
+            std::vector<uint32_t> marginal_bins(m_nBinsX);
+            auto max_bin = 0u;
             for (size_t x = 0; x < m_nBinsX; x++)
-            marginal_bins[y] += m_bins[x + y * m_nBinsX];
-            max_bin = std::max(max_bin, marginal_bins[y]);
-        }
+            {
+                for (size_t y = 0; y < m_nBinsY; y++)
+                marginal_bins[x] += m_bins[x + y * m_nBinsX];
+                max_bin = std::max(max_bin, marginal_bins[x]);
+            }
 
-        if (max_bin == 0) {
-            painter->restore();
-            return;
-        }
+            if (max_bin == 0) {
+                painter->restore();
+                return;
+            }
 
-        painter->setPen(getColor(10, 100));
-        for (size_t y = 0; y < m_nBinsY; y++)
-        {
-            auto binCoefficient = static_cast<qreal>(marginal_bins[y]) / max_bin;
-            painter->setBrush(getColor(static_cast<quint32>(binCoefficient * 100), 100));
-            painter->drawRect(m_layout.hist.getBar<Orientation::Vertical>(histoArea, m_nBinsY, y, binCoefficient));
-        }
+            //painter->setBrush(getColor(20, 100));
+
+            painter->setBrush(getColor(75, 100));
+            painter->setPen(m_borderColor);
+            for (size_t x = 0; x < m_nBinsX; x++)
+            {
+                auto binCoefficient = static_cast<qreal>(marginal_bins[x]) / max_bin;
+                painter->drawRect(m_layout.hist.getBar<Orientation::Horizontal>(histoArea, m_nBinsX, x, binCoefficient));
+            }
+
+            } else {
+            auto histoArea = m_layout.getHistoArea<Orientation::Vertical>(plotArea);
+            painter->drawRect(histoArea);
+
+            std::vector<uint32_t> marginal_bins(m_nBinsY);
+            auto max_bin = 0u;
+            for (size_t y = 0; y < m_nBinsY; y++)
+            {
+                for (size_t x = 0; x < m_nBinsX; x++)
+                marginal_bins[y] += m_bins[x + y * m_nBinsX];
+                max_bin = std::max(max_bin, marginal_bins[y]);
+            }
+
+            if (max_bin == 0) {
+                painter->restore();
+                return;
+            }
+
+            painter->setBrush(getColor(75, 100));
+            painter->setPen(m_borderColor);
+            for (size_t y = 0; y < m_nBinsY; y++)
+            {
+                auto binCoefficient = static_cast<qreal>(marginal_bins[y]) / max_bin;
+                painter->drawRect(m_layout.hist.getBar<Orientation::Vertical>(histoArea, m_nBinsY, y, binCoefficient));
+            }
         }
 
         painter->restore();
@@ -135,7 +138,8 @@ namespace HexPlot {
 
     void HexPlot::paint(QPainter *painter)
     {
-        painter->setRenderHints(QPainter::Antialiasing, true);
+        painter->setRenderHint(QPainter::Antialiasing, true);
+        painter->setRenderHint(QPainter::TextAntialiasing, true);
 
         qreal R, r;
         auto plotArea = m_layout.getPlotArea(width(), height(), m_nBinsX, m_nBinsY, R, r);
@@ -182,13 +186,28 @@ namespace HexPlot {
         painter->setBrush(QBrush(QColor(0, 0, 0, 0)));
         painter->drawLines(m_layout.scalebar.getTicks(scalebarArea));
 
+        painter->setPen(m_textColor);
+
         QFont font;
         font.setPixelSize(m_layout.scalebar.textHeight);
         painter->setFont(font);
 
         for (quint8 i = 0; i <= 100; i += m_layout.scalebar.largeTickEvery)
-        painter->drawText(m_layout.scalebar.getTextPos(scalebarArea, i),
-                  Qt::AlignLeft, QString::number((m_scaleMax * i) / 100));
+        {
+            auto val = m_scaleMax * i;
+            if (val % 100 == 0 || val > 1000)
+            {
+                auto val = (m_scaleMax * i) / 100;
+                painter->drawText(m_layout.scalebar.getTextPos(scalebarArea, i),
+                      Qt::AlignLeft, QString("%1").arg(val, 2, 10, QChar(' ')));
+            }
+            else
+            {
+                auto val = (m_scaleMax * i) / 100.0;
+                painter->drawText(m_layout.scalebar.getTextPos(scalebarArea, i),
+                      Qt::AlignLeft, " " + QString::number(val, 'f', 1));
+            }
+        }
         painter->restore();
     }
 
@@ -203,6 +222,7 @@ namespace HexPlot {
         painter->drawLines(m_layout.axes.getTicks<Orientation::Horizontal>(plotArea));
         painter->drawLines(m_layout.axes.getTicks<Orientation::Vertical>(plotArea));
 
+        painter->setPen(m_textColor);
         for (quint8 i = 0; i <= 100; i += m_layout.axes.largeTickEvery) {
         painter->drawText(m_layout.axes.getTickTextPos<Orientation::Horizontal>(plotArea, i),
                   Qt::AlignCenter, QString::number(i / 100.0));

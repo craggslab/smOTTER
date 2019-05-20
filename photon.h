@@ -62,6 +62,7 @@ public:
     void spliceNewPhotons(std::list<Photon>& newPhotons, const PhotonWriteLock& lock);
     void combinePhotonBlock(uint64_t bin, PhotonBlock& block, const PhotonWriteLock& lock);
     void spliceNewLaserPowers(std::list<double>& newLaserPowers, const LaserPowerWriteLock& lock);
+    void spliceLaserPowersTo(std::list<double>& target, const LaserPowerWriteLock& lock);
     void clear(const PhotonWriteLock& ph_lock, const LaserPowerWriteLock& lp_lock);
 private:
     PhotonMutex m_detectedPhotonsMutex;

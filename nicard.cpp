@@ -26,6 +26,7 @@ NICard::NICard(const std::string& deviceName)
       m_laserPowerTask(nullptr),
       m_running(false),
       m_stopReadPhotons(false),
+      m_saveLaserPowers(true),
       m_totalAcceptorPhotons(0),
       m_totalDonorPhotons(0)
 {
@@ -76,6 +77,11 @@ std::vector<std::string> NICard::getTimebases() const
                                   isNotTimebase), terminals.end());
 
    return terminals;
+}
+
+std::vector<std::string> NICard::getAnalogueInLines() const
+{
+    return getNIStrings(&DAQmxGetDevAIPhysicalChans, std::make_optional(m_deviceName + "/"));
 }
 
 std::string NICard::getDeviceName() const
@@ -140,6 +146,7 @@ void NICard::setAcceptorDetectorPin(std::string pin) { m_acceptorDetectorPin = s
 void NICard::setDonorDetectorGate(std::string pin) { m_donorDetectorGate = std::move(pin); clearTriggers(); }
 void NICard::setAcceptorDetectorGate(std::string pin) { m_acceptorDetectorGate = std::move(pin); clearTriggers(); }
 void NICard::setTimebase(std::string pin) { m_timebase = std::move(pin); }
+void NICard::setLaserPowerPin(std::string pin) { m_laserPowerPin = std::move(pin); }
 void NICard::setLaserControlResolution(std::chrono::nanoseconds res) { m_laserControlResolution = std::move(res); }
 void NICard::setTimestampAdjustment(uint64_t val) { m_timestampAdjustment = val; }
 
@@ -154,6 +161,7 @@ void NICard::setDonorLaserOnPercentage(uint8_t percentage) { m_donorLaserDutyCyc
 void NICard::setAcceptorLaserOffPercentage(uint8_t percentage) { m_acceptorLaserDutyCycle.setOffPercent(percentage); }
 void NICard::setAcceptorLaserOnPercentage(uint8_t percentage) { m_acceptorLaserDutyCycle.setOnPercent(percentage); }
 void NICard::setExperimentLength(std::chrono::minutes length) { m_experimentLength = std::move(length); }
+void NICard::setSaveLaserPowers(bool save) { m_saveLaserPowers = save; }
 
 bool NICard::isRunning() { return m_running; }
 
@@ -193,14 +201,16 @@ NICard::NIResult NICard::start(bool live)
 
     RET_IF_FAILED(DAQmxStartTask(m_donorCounterTask));
     RET_IF_FAILED(DAQmxStartTask(m_acceptorCounterTask));
-    RET_IF_FAILED(DAQmxStartTask(m_laserPowerTask));
+    if (m_saveLaserPowers)
+        RET_IF_FAILED(DAQmxStartTask(m_laserPowerTask));
     RET_IF_FAILED(DAQmxStartTask(m_triggerTask));
 
     m_totalDonorPhotons = 0;
     m_totalAcceptorPhotons = 0;
     m_stopReadPhotons = false;
     m_readPhotonsResult = std::async(std::launch::async, &NICard::readPhotons, this);
-    m_laserPowerResult = std::async(std::launch::async, &NICard::readLaserPower, this);
+    if (m_saveLaserPowers)
+        m_laserPowerResult = std::async(std::launch::async, &NICard::readLaserPower, this);
 
     m_running = true;
     m_acquisitionStart = m_acquisitionClock.now();
@@ -223,11 +233,12 @@ NICard::NIResult NICard::stop()
 
     clearTasks();
 
-    if (m_laserPowerResult.valid())
-        results[1] = m_laserPowerResult.get();
-    else
-        results[1] = std::make_optional("Could not retrieve result of laser power thread!");
-
+    if (m_saveLaserPowers) {
+        if (m_laserPowerResult.valid())
+            results[1] = m_laserPowerResult.get();
+        else
+            results[1] = std::make_optional("Could not retrieve result of laser power thread!");
+    }
 
     m_running = false;
 
@@ -326,22 +337,14 @@ NICard::NIResult NICard::setupAnalogueReads()
     if (m_experimentLength % m_alexPeriod != 0min)
         return std::make_optional("Invalid alex period (" + std::to_string(m_alexPeriod.count()) + "us)! Alex period should evenly divide the experement time (" + std::to_string(m_experimentLength.count()) + " minutes)");
 
-    auto AIRate = std::chrono::duration_cast<std::chrono::nanoseconds>(1s) / m_laserControlResolution;
-    //auto nAISamples = AIRate * std::chrono::duration_cast<std::chrono::seconds>(m_experimentLength);
+    auto AIRate = std::chrono::duration_cast<std::chrono::nanoseconds>(1s) / m_laserControlResolution / 10;
 
     RET_IF_FAILED(DAQmxCreateTask("Laser Power Read", &m_laserPowerTask));
 
-    //TODO: User selected channel
-    RET_IF_FAILED(DAQmxCreateAIVoltageChan(m_laserPowerTask, (m_deviceName + "/ai0").c_str(), "Laser Power", DAQmx_Val_NRSE, -10.0, 10.0, DAQmx_Val_Volts, nullptr));
+    RET_IF_FAILED(DAQmxCreateAIVoltageChan(m_laserPowerTask, (m_deviceName + "/" +  m_laserPowerPin).c_str(), "Laser Power", DAQmx_Val_NRSE, -10.0, 10.0, DAQmx_Val_Volts, nullptr));
 
-    RET_IF_FAILED(DAQmxCfgSampClkTiming(m_laserPowerTask, "", static_cast<float64>(AIRate)/100, DAQmx_Val_Rising, DAQmx_Val_ContSamps, 4000));
+    RET_IF_FAILED(DAQmxCfgSampClkTiming(m_laserPowerTask, "", static_cast<float64>(AIRate), DAQmx_Val_Rising, DAQmx_Val_ContSamps, 4000));
     RET_IF_FAILED(DAQmxCfgDigEdgeStartTrig(m_laserPowerTask, ("/" + m_deviceName + "/do/StartTrigger").c_str(), DAQmx_Val_Rising));
-
-    //RET_IF_FAILED(DAQmxCfgSampClkTiming(m_laserPowerTask, ("/" + m_deviceName + "/do/StartTrigger").c_str(), static_cast<float64>(AIRate), DAQmx_Val_Rising, DAQmx_Val_FiniteSamps, static_cast<uInt64>(nAISamples.count())));
-
-    //auto samplesPerALEXPeriod = static_cast<uInt32>(m_alexPeriod / m_laserControlResolution);
-    //RET_IF_FAILED(DAQmxRegisterEveryNSamplesEvent(m_laserPowerTask, DAQmx_Val_Acquired_Into_Buffer, samplesPerALEXPeriod, 0, &LaserSamplesCallback, this));
-    //RET_IF_FAILED(DAQmxRegisterDoneEvent(m_laserPowerTask, 0, &LaserSamplesFinishedCallback, this));
 
     return std::nullopt;
 }

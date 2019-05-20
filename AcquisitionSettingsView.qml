@@ -26,7 +26,6 @@ ScrollView
         width: Math.max(implicitWidth, scrollView.availableWidth - sbWidth - 10)
 
         columns: 4
-        rows: 3
 
         Label {
             Layout.column: 0
@@ -54,10 +53,24 @@ ScrollView
         Label {}
 
         CheckBox {
-            id: saveIntervalCheckBox
+            id: saveLaserPowersCheckBox
 
             Layout.column: 0
             Layout.row: 1
+
+            enabled: !acquisitionRunning
+
+            checked: true
+            text: qsTr("Save Laser Powers")
+
+            onCheckedChanged: dataSource.setSaveLaserPowers(checked)
+        }
+
+        CheckBox {
+            id: saveIntervalCheckBox
+
+            Layout.column: 0
+            Layout.row: 2
 
             enabled: !acquisitionRunning
 
@@ -68,9 +81,6 @@ ScrollView
 
         SpinBox {
             id: saveIntervalSpinBox
-
-            Layout.column: 1
-            Layout.row: 1
 
             editable: true
             value: 1
@@ -112,7 +122,7 @@ ScrollView
             Layout.columnSpan: 4
 
             Layout.column: 0
-            Layout.row: 2
+            Layout.row: 3
 
             Layout.fillHeight: true
             Layout.fillWidth: true
@@ -125,7 +135,6 @@ ScrollView
                 anchors.right: parent.right
 
                 GridLayout {
-                    rows: 2
                     columns: 3
 
                     Label {
@@ -276,10 +285,15 @@ ScrollView
                         enabled: !acquisitionRunning
 
                         onClicked: {
-                            isLive = false
-                            dataSource.startAcquisition()
-                            refreshProgressBarTimer.timeSoFar = 0.0
-                            refreshProgressBarTimer.start()
+                            if (dataSource.fileExists())
+                            {
+                                warningTextArea.text = "\n" + dataSource.getFilename() + " already exists\n\nDo you want to overwrite?\n"
+                                confirmDialog.open()
+                            }
+                            else
+                            {
+                                startSavingAcquisition()
+                            }
                         }
                     }
 
@@ -304,8 +318,39 @@ ScrollView
         dataSource.setExperimentLength(experimentLengthSpinBox.value);
     }
 
+    function startSavingAcquisition() {
+        isLive = false
+        dataSource.startAcquisition()
+        refreshProgressBarTimer.timeSoFar = 0.0
+        refreshProgressBarTimer.start()
+    }
+
     Connections {
         target: dataSource
         onSendValues: sendValuesToNICard();
+    }
+
+    Dialog {
+        id: confirmDialog
+
+        Material.theme: Material.Dark
+        Material.primary: Material.BlueGrey
+        Material.accent: Material.Blue
+
+        parent: mainWindow
+        anchors.centerIn: parent
+
+        modal: Qt.WindowModal
+
+        standardButtons: Dialog.No | Dialog.Yes
+
+        title: "Warning:"
+
+        onAccepted: startSavingAcquisition()
+
+        Label {
+            id: warningTextArea
+            font.pixelSize: 15
+        }
     }
 }

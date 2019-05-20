@@ -11,15 +11,13 @@
 class PhotonHDF5Exporter
 {
 public:
-    using SaveResult = std::pair<std::pair<PhotonStore::ConstPhotonIterator, PhotonStore::ConstLaserPowerIterator>,
-        std::optional<std::string>>;
+    using SaveResult = std::pair<PhotonStore::ConstPhotonIterator, std::optional<std::string>>;
 
 
     PhotonHDF5Exporter();
 
     std::optional<std::string> createFile();
     SaveResult savePhotons(std::optional<PhotonStore::ConstPhotonIterator> ph_start_op,
-                           std::optional<PhotonStore::ConstLaserPowerIterator> lp_start_op,
                            PhotonStore& store);
 
     void setFilename(const std::string& filename);
@@ -38,6 +36,9 @@ public:
     void setSampleName(const std::string& sampleName);
     void setUserName(const std::string& userName);
     void setUserAffiliation(const std::string& userAffiliation);
+    void setLaserPowerSampleInterval(const std::chrono::nanoseconds& interval);
+
+    std::string getFilename() const;
 
     template<FluorophoreType ft>
     void setLaserOnPercentage(uint8_t percent) {
@@ -77,6 +78,7 @@ private:
     std::string m_sampleName;
     std::string m_userName;
     std::string m_userAffiliation;
+    std::chrono::nanoseconds m_laserPowerSampleInterval;
 };
 
 #endif // PHOTONHDF5EXPORTER_H

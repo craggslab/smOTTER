@@ -28,6 +28,7 @@ public:
     std::vector<std::string> getCounters() const;
     std::vector<std::string> getCounterLines() const;
     std::vector<std::string> getTimebases() const;
+    std::vector<std::string> getAnalogueInLines() const;
     std::string getDeviceName() const;
     uint64_t getTotalDonorPhotons() const;
     uint64_t getTotalAcceptorPhotons() const;
@@ -44,6 +45,7 @@ public:
     void setTimebase(std::string pin);
     void setLaserControlResolution(std::chrono::nanoseconds res);
     void setTimestampAdjustment(uint64_t val);
+    void setLaserPowerPin(std::string pin);
 
     /* Acquisition Settings */
     void setAlexPeriod(std::chrono::microseconds micros);
@@ -52,6 +54,7 @@ public:
     void setAcceptorLaserOffPercentage(uint8_t percentage);
     void setAcceptorLaserOnPercentage(uint8_t percentage);
     void setExperimentLength(std::chrono::minutes length);
+    void setSaveLaserPowers(bool save);
 
     bool isRunning();
 
@@ -90,6 +93,7 @@ private:
     std::string m_acceptorDetectorPin;
     std::string m_donorDetectorGate;
     std::string m_acceptorDetectorGate;
+    std::string m_laserPowerPin;
     std::string m_timebase;
     uint64_t m_timestampAdjustment;
     std::chrono::nanoseconds m_laserControlResolution;
@@ -113,6 +117,7 @@ private:
     std::atomic<bool> m_stopReadPhotons;
     std::future<NIResult> m_readPhotonsResult;
     std::future<NIResult> m_laserPowerResult;
+    bool m_saveLaserPowers;
 
     std::atomic<uint64_t> m_totalAcceptorPhotons;
     std::atomic<uint64_t> m_totalDonorPhotons;

@@ -64,11 +64,11 @@ namespace HexPlot {
         }
 
         bool operator==(Hex1DHistLayout const &other) const {
-        return qFuzzyCompare(this->gap, other.gap) && qFuzzyCompare(this->height, other.height);
+            return qFuzzyCompare(this->gap, other.gap) && qFuzzyCompare(this->height, other.height);
         }
 
         bool operator!=(Hex1DHistLayout const &other) const {
-        return !(*this == other);
+            return !(*this == other);
         }
     };
 
@@ -105,35 +105,35 @@ namespace HexPlot {
         }
 
         QVector<QLineF> getTicks(const QRectF& scalebar) {
-        auto out = QVector<QLineF>();
-        for (quint8 i = 0; i <= 100; i += ticksEvery) {
-            out.push_back(getTick(scalebar, i * ticksEvery));
-        }
-        return out;
+            auto out = QVector<QLineF>();
+            for (quint8 i = 0; i <= 100; i += ticksEvery) {
+                out.push_back(getTick(scalebar, i * ticksEvery));
+            }
+            return out;
         }
 
         QRectF getTextPos(const QRectF& scalebar, quint8 percent) {
-        auto yPos = scalebar.bottom() -
+            auto yPos = scalebar.bottom() -
                 percent * scalebar.height() / 100.0 -
                 textHeight/2.0;
 
-        return QRectF(scalebar.right() + largeTickSize + 1,
+            return QRectF(scalebar.right() + largeTickSize + 1,
                   yPos, textWidth, textHeight);
         }
 
         bool operator==(HexScalebarLayout const &other) const {
-        return qFuzzyCompare(this->gap, other.gap) &&
-            qFuzzyCompare(this->width, other.width) &&
-            this->textHeight == other.textHeight &&
-            qFuzzyCompare(this->textWidth, other.textWidth) &&
-            qFuzzyCompare(this->largeTickSize, other.largeTickSize) &&
-            qFuzzyCompare(this->smallTickSize, other.smallTickSize) &&
-            this->ticksEvery == other.ticksEvery &&
-            this->largeTickEvery == other.largeTickEvery;
+            return qFuzzyCompare(this->gap, other.gap) &&
+                qFuzzyCompare(this->width, other.width) &&
+                this->textHeight == other.textHeight &&
+                qFuzzyCompare(this->textWidth, other.textWidth) &&
+                qFuzzyCompare(this->largeTickSize, other.largeTickSize) &&
+                qFuzzyCompare(this->smallTickSize, other.smallTickSize) &&
+                this->ticksEvery == other.ticksEvery &&
+                this->largeTickEvery == other.largeTickEvery;
         }
 
         bool operator!=(HexScalebarLayout const &other) const {
-        return !(*this == other);
+            return !(*this == other);
         }
 
     };

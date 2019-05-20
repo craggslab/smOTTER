@@ -17,8 +17,7 @@ NIDataSource::NIDataSource(QQuickView *appViewer, QObject *parent)
     : QObject(parent),
       m_appViewer(appViewer),
       m_device(std::make_unique<NICard>()),
-      m_lastSavedPhoton(std::nullopt),
-      m_lastSavedPower(std::nullopt)
+      m_lastSavedPhoton(std::nullopt)
 {
     updateAvailableDevices();
 }
@@ -84,6 +83,17 @@ const QStringList NIDataSource::timebases() const
     return out;
 }
 
+const QStringList NIDataSource::analogueInLines() const
+{
+    qDebug() << "Get Analogue In Called";
+    QStringList out;
+
+    for (auto line: m_device->getAnalogueInLines())
+        out.push_back(QString::fromStdString(line));
+
+    return out;
+}
+
 void NIDataSource::setCurrentDevice(const QString& devName)
 {
     qDebug() << "Set Current Device Called";
@@ -93,6 +103,7 @@ void NIDataSource::setCurrentDevice(const QString& devName)
     emit counterLinesChanged();
     emit timebasesChanged();
     emit countersChanged();
+    emit analogueInLinesChanged();
     emit sendValues();
 }
 
@@ -104,9 +115,13 @@ void NIDataSource::setDonorDetectorPin(const QString& pin) { m_device->setDonorD
 void NIDataSource::setAcceptorDetectorPin(const QString& pin) { m_device->setAcceptorDetectorPin(pin.toStdString()); }
 void NIDataSource::setDonorDetectorGate(const QString& pin) { m_device->setDonorDetectorGate(pin.toStdString()); }
 void NIDataSource::setAcceptorDetectorGate(const QString& pin) { m_device->setAcceptorDetectorGate(pin.toStdString()); }
+void NIDataSource::setLaserPowerPin(const QString& pin) { m_device->setLaserPowerPin(pin.toStdString()); }
 void NIDataSource::setTimebase(const QString& pin) { m_device->setTimebase(pin.toStdString()); }
-void NIDataSource::setLaserControlResolution(quint32 res) { m_device->setLaserControlResolution(std::chrono::nanoseconds(res)); }
 void NIDataSource::setTimestampAdjustment(quint64 val) { m_device->setTimestampAdjustment(val); }
+void NIDataSource::setLaserControlResolution(quint32 res) {
+    m_device->setLaserControlResolution(std::chrono::nanoseconds(res));
+    m_exporter.setLaserPowerSampleInterval(std::chrono::nanoseconds(res) * 10);
+}
 
 void NIDataSource::setAlexPeriod(quint32 micros) {
     m_device->setAlexPeriod(std::chrono::microseconds(micros));
@@ -132,6 +147,7 @@ void NIDataSource::setExperimentLength(quint32 minutes) {
     m_device->setExperimentLength(std::chrono::minutes(minutes));
     m_exporter.setAcquisitionDuration(std::chrono::minutes(minutes));
 }
+void NIDataSource::setSaveLaserPowers(bool save) { m_device->setSaveLaserPowers(save); }
 
 void NIDataSource::setFilename(const QString& filename) { m_exporter.setFilename(filename.toStdString()); }
 void NIDataSource::setDescription(const QString& description) { m_exporter.setDescription(description.toStdString()); }
@@ -148,12 +164,15 @@ void NIDataSource::setSampleName(const QString& sampleName) { m_exporter.setSamp
 void NIDataSource::setUserName(const QString& userName) { m_exporter.setUserName(userName.toStdString()); }
 void NIDataSource::setUserAffiliation(const QString& userAffiliation) { m_exporter.setUserAffiliation(userAffiliation.toStdString()); }
 
+QString NIDataSource::getFilename() const {
+    return QString::fromStdString(m_exporter.getFilename());
+}
+
 bool NIDataSource::isRunning() { return m_device->isRunning(); }
 
 bool NIDataSource::startAcquisition(bool live)
 {
     m_lastSavedPhoton = std::nullopt;
-    m_lastSavedPower = std::nullopt;
 
     if (!live)
     {
@@ -300,16 +319,19 @@ void NIDataSource::saveNewPhotons(bool endOfAcquisition)
             emit error(QString::fromStdString(err.value()));
         }
 
-        m_lastSavedPhoton = lastSaved.first;
-        m_lastSavedPower = lastSaved.second;
+        m_lastSavedPhoton = lastSaved;
     }
 
     m_saveFuture = std::async(std::launch::async, &PhotonHDF5Exporter::savePhotons,
-                        &m_exporter, m_lastSavedPhoton, m_lastSavedPower, std::ref(store));
+                        &m_exporter, m_lastSavedPhoton, std::ref(store));
 
     if (endOfAcquisition)
     {
         if (auto [_, res] = m_saveFuture.get(); res.has_value())
             emit error(QString::fromStdString(res.value()));
     }
+}
+
+bool NIDataSource::fileExists() {
+    return QFile::exists(QString::fromStdString(m_exporter.getFilename()));
 }

@@ -108,6 +108,13 @@ void PhotonStore::spliceNewLaserPowers(std::list<double> &newLaserPowers, const 
     m_laserPowers.splice(m_laserPowers.end(), newLaserPowers);
 }
 
+void PhotonStore::spliceLaserPowersTo(std::list<double> &target, const LaserPowerWriteLock &lock) {
+    if (!lock.owns_lock())
+        throw std::invalid_argument("Cannot perform splice! lock object does not own lock! (PhotonStore::spliceLaserPowersTo");
+
+    target.splice(target.end(), m_laserPowers);
+}
+
 PhotonStore::IteratorStruct<PhotonStore::ConstPhotonIterator> PhotonStore::photons(const PhotonLock& lock) const
 {
     if (!lock.owns_lock())

@@ -26,7 +26,7 @@ ChartView {
         name: "DD"
         axisX: axisX
         axisY: axisY
-        color: "green"
+        color: "lime"
         useOpenGL: true
     }
 

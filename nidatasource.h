@@ -29,6 +29,7 @@ class NIDataSource : public QObject
     Q_PROPERTY(QStringList counters READ counters NOTIFY countersChanged)
     Q_PROPERTY(QStringList counterLines READ counterLines NOTIFY counterLinesChanged)
     Q_PROPERTY(QStringList timebases READ timebases NOTIFY timebasesChanged)
+    Q_PROPERTY(QStringList analogueInLines READ analogueInLines NOTIFY analogueInLinesChanged)
 
 public:
     explicit NIDataSource(QQuickView *appViewer, QObject *parent = nullptr);
@@ -39,6 +40,7 @@ public:
     const QStringList counters() const;
     const QStringList counterLines() const;
     const QStringList timebases() const;
+    const QStringList analogueInLines() const;
 
 
 
@@ -48,6 +50,7 @@ signals:
     void countersChanged();
     void counterLinesChanged();
     void timebasesChanged();
+    void analogueInLinesChanged();
     void sendValues();
     void error(const QString& msg);
 
@@ -63,6 +66,7 @@ public slots:
     void setAcceptorDetectorPin(const QString& pin);
     void setDonorDetectorGate(const QString& pin);
     void setAcceptorDetectorGate(const QString& pin);
+    void setLaserPowerPin(const QString& pin);
     void setTimebase(const QString& pin);
     void setLaserControlResolution(quint32 res);
     void setTimestampAdjustment(quint64 val);
@@ -73,6 +77,7 @@ public slots:
     void setAcceptorLaserOffPercentage(quint8 percentage);
     void setAcceptorLaserOnPercentage(quint8 percentage);
     void setExperimentLength(quint32 minutes);
+    void setSaveLaserPowers(bool save);
 
     void setFilename(const QString& filename);
     void setDescription(const QString& description);
@@ -90,6 +95,8 @@ public slots:
     void setUserAffiliation(const QString& userAffiliation);
 
 
+    QString getFilename() const;
+
     bool isRunning();
     bool startAcquisition(bool live = false);
     bool stopAcquisition();
@@ -102,6 +109,7 @@ public slots:
     void updateESHistogram(HexPlot::HexPlot *hexPlot, quint64 threshold_AA, quint64 threshold_DD_DA, quint64 min_t, quint64 max_t);
 
     void saveNewPhotons(bool endOfAcquisition);
+    bool fileExists();
 
 private:
     QStringList m_availableDevices;
@@ -110,7 +118,6 @@ private:
     std::unique_ptr<NICard> m_device;
     std::future<PhotonHDF5Exporter::SaveResult> m_saveFuture;
     std::optional<PhotonStore::ConstPhotonIterator> m_lastSavedPhoton;
-    std::optional<PhotonStore::ConstLaserPowerIterator> m_lastSavedPower;
     PhotonHDF5Exporter m_exporter;
 };
 

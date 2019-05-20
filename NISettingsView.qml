@@ -19,6 +19,7 @@ ScrollView {
     property alias acceptorDetectorPinDefault: acceptorDetectorPinComboBox.defaultStr
     property alias donorDetectorGateDefault: donorDetectorGateComboBox.defaultStr
     property alias acceptorDetectorGateDefault: acceptorDetectorGateComboBox.defaultStr
+    property alias laserPowerPinDefault: laserPowerPin.defaultStr
     property alias timebaseDefault: timebaseComboBox.defaultStr
     property alias laserControlResolution: laserControlResSpinBox.value
     property alias timestampAdjustmentValue: timestampAdjustmentSpinBox.value
@@ -26,7 +27,6 @@ ScrollView {
     GridLayout {
         width: Math.max(implicitWidth, scrollView.availableWidth - sbWidth - 10)
         id: contentGrid
-        rows: 8
         columns: 2
 
         columnSpacing: 10
@@ -304,6 +304,36 @@ ScrollView {
                 if(validDevice)
                     defaultStr = currentText
                 dataSource.setAcceptorDetectorGate(currentText)
+            }
+        }
+
+        Label {
+            Layout.preferredWidth: implicitWidth
+            Layout.alignment: Qt.AlignVCenter
+            text: "Laser Power Detection Pin:"
+        }
+
+        ComboBox {
+            id: laserPowerPin
+            Material.theme: Material.Light
+
+            Layout.alignment: Qt.AlignVCenter
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+
+            property bool validDevice: false
+            property string defaultStr: "ai0"
+
+            currentIndex: findIndexOfDefault(model, defaultStr)
+
+            model: dataSource.analogueInLines
+
+            onModelChanged: validDevice = deviceComboBox.currentText !== ""
+
+            onCurrentTextChanged: {
+                if (validDevice)
+                    defaultStr = currentText
+                dataSource.setLaserPowerPin(currentText)
             }
         }
 

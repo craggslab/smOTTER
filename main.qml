@@ -81,9 +81,17 @@ Pane {
         property alias acceptorDetectorPinDefault: niSettings.acceptorDetectorPinDefault
         property alias donorDetectorGateDefault: niSettings.donorDetectorGateDefault
         property alias acceptorDetectorGateDefault: niSettings.acceptorDetectorGateDefault
+        property alias laserPowerDetectorPin: niSettings.laserPowerPinDefault
         property alias timebaseDefault: niSettings.timebaseDefault
         property alias laserControlResolution: niSettings.laserControlResolution
         property alias timestampAdjustmentValue: niSettings.timestampAdjustmentValue
+
+        fileName: "./smfBox_Settings.ini"
+    }
+
+    Settings {
+        category: "ESHistogramSettings"
+        property alias numBins: esHistogram.nBins
 
         fileName: "./smfBox_Settings.ini"
     }
@@ -311,6 +319,8 @@ Pane {
             }
         }
     }
+
+
 
 
     Connections {

@@ -13,34 +13,36 @@
 
 using namespace std::chrono_literals;
 
-PhotonHDF5Exporter::SaveResult make_save_result(PhotonStore::ConstPhotonIterator ph_itr, PhotonStore::ConstLaserPowerIterator lp_itr, std::optional<std::string> err = std::nullopt)
+PhotonHDF5Exporter::SaveResult make_save_result(PhotonStore::ConstPhotonIterator ph_itr, std::optional<std::string> err = std::nullopt)
 {
-    return std::make_pair(std::make_pair(ph_itr, lp_itr), err);
+    return std::make_pair(ph_itr, err);
 }
 
-PhotonHDF5Exporter::SaveResult make_save_result(PhotonStore::ConstPhotonIterator ph_itr, PhotonStore::ConstLaserPowerIterator lp_itr, std::string err) {
-    return make_save_result(ph_itr, lp_itr, std::make_optional(err));
+PhotonHDF5Exporter::SaveResult make_save_result(PhotonStore::ConstPhotonIterator ph_itr, std::string err) {
+    return make_save_result(ph_itr, std::make_optional(err));
 }
 
 PhotonHDF5Exporter::PhotonHDF5Exporter() {}
 
-PhotonHDF5Exporter::SaveResult PhotonHDF5Exporter::savePhotons(std::optional<PhotonStore::ConstPhotonIterator> ph_start_opt, std::optional<PhotonStore::ConstLaserPowerIterator> lp_start_op, PhotonStore& store)
+PhotonHDF5Exporter::SaveResult PhotonHDF5Exporter::savePhotons(std::optional<PhotonStore::ConstPhotonIterator> ph_start_opt, PhotonStore& store)
 {
     auto ph_lock = store.getReadLockObject();
 
     ph_lock.lock();
     auto ph_start = ph_start_opt.has_value() ?  ++ph_start_opt.value() : store.photons(ph_lock).begin();
     auto ph_end = store.photons(ph_lock).end();
-    std::vector<Photon> photonVec(ph_start, ph_end--);
+    std::vector<Photon> photonVec(ph_start, ph_end);
+    if (ph_end != ph_start) ph_end--;
     ph_lock.unlock();
 
-    auto lp_lock = store.getLaserPowerLockObject();
+    std::list<double> powerList;
 
+    auto lp_lock = store.getLaserPowerWriteLockObject();
     lp_lock.lock();
-    auto lp_start = lp_start_op.has_value() ? ++lp_start_op.value() : store.laserPowers(lp_lock).begin();
-    auto lp_end = store.laserPowers(lp_lock).end();
-    std::vector<double> powerVec(lp_start, lp_end--);
+    store.spliceLaserPowersTo(powerList, lp_lock);
     lp_lock.unlock();
+
+    std::vector<double> powerVec(powerList.begin(), powerList.end());
 
     std::vector<uint64_t> timestamps(photonVec.size());
     std::vector<uint8_t> detectors(photonVec.size());
@@ -58,13 +60,13 @@ PhotonHDF5Exporter::SaveResult PhotonHDF5Exporter::savePhotons(std::optional<Pho
         expandDataset(detectors, PhotonHDF5::detectors_name, H5::PredType::NATIVE_UINT8, photonDataGroup);
         expandDataset(powerVec, PhotonHDF5::laser_power_name, H5::PredType::NATIVE_DOUBLE, photonDataGroup);
     }
-    catch (H5::FileIException& err) {  return make_save_result(ph_start, lp_start, err.getDetailMsg()); }
-    catch (H5::DataSetIException& err) { return make_save_result(ph_start, lp_start, err.getDetailMsg()); }
-    catch (H5::DataSpaceIException& err) { return make_save_result(ph_start, lp_start, err.getDetailMsg()); }
-    catch (H5::GroupIException& err) { return make_save_result(ph_start, lp_start, err.getDetailMsg()); }
-    catch (PhotonHDF5::bad_photon_hdf5_error& err) { return make_save_result(ph_start, lp_start, std::string(err.what())); }
+    catch (H5::FileIException& err) {  return make_save_result(ph_start, err.getDetailMsg()); }
+    catch (H5::DataSetIException& err) { return make_save_result(ph_start, err.getDetailMsg()); }
+    catch (H5::DataSpaceIException& err) { return make_save_result(ph_start, err.getDetailMsg()); }
+    catch (H5::GroupIException& err) { return make_save_result(ph_start, err.getDetailMsg()); }
+    catch (PhotonHDF5::bad_photon_hdf5_error& err) { return make_save_result(ph_start, std::string(err.what())); }
 
-    return make_save_result(ph_end, lp_end);
+    return make_save_result(ph_end);
 }
 
 
@@ -89,6 +91,9 @@ void PhotonHDF5Exporter::setBufferDesc(const std::string& bufferDesc) { m_buffer
 void PhotonHDF5Exporter::setSampleName(const std::string& sampleName) { m_sampleName = sampleName; }
 void PhotonHDF5Exporter::setUserName(const std::string& userName) { m_userName = userName; }
 void PhotonHDF5Exporter::setUserAffiliation(const std::string& userAffiliation) { m_userAffiliation = userAffiliation; }
+void PhotonHDF5Exporter::setLaserPowerSampleInterval(const std::chrono::nanoseconds& interval) { m_laserPowerSampleInterval = interval; }
+
+std::string PhotonHDF5Exporter::getFilename() const { return m_filename; }
 
 std::optional<std::string> PhotonHDF5Exporter::checkAllValuesPresent()
 {
@@ -161,6 +166,7 @@ std::optional<std::string> PhotonHDF5Exporter::createFile()
         writeDataset<int64_t>		( { m_donorDutyCycle.getOffEndTime()/10ns, m_donorDutyCycle.getOnEndTime()/10ns }, 			PhotonHDF5::alex_excitation_period1_name, 	PhotonHDF5::alex_excitation_period1_desc, 	H5::PredType::NATIVE_INT64, 		H5::PredType::STD_I64LE, 			measurementSpecsGroup);
         writeDataset<int64_t>		( { m_acceptorDutyCycle.getOffEndTime()/10ns, m_acceptorDutyCycle.getOnEndTime()/10ns }, 	PhotonHDF5::alex_excitation_period2_name, 	PhotonHDF5::alex_excitation_period2_desc, 	H5::PredType::NATIVE_INT64, 		H5::PredType::STD_I64LE, 			measurementSpecsGroup);
         writeDataset<uint64_t>		( { 0ull }, 																				PhotonHDF5::alex_offset_name, 				PhotonHDF5::alex_offset_desc, 				H5::PredType::NATIVE_UINT64, 		H5::PredType::STD_U64LE, 			measurementSpecsGroup);
+        writeDataset<int64_t>		( { m_laserPowerSampleInterval.count() }, 													PhotonHDF5::laser_power_interval_name,		PhotonHDF5::laser_power_interval_desc, 		H5::PredType::NATIVE_INT64,			H5::PredType::STD_I64LE,			measurementSpecsGroup);
 
         // ----- Detector Specs Group ------- //
         auto detectorSpecsGroup = createGroup(PhotonHDF5::detectors_specs_name, 	PhotonHDF5::detectors_specs_desc, 	file);

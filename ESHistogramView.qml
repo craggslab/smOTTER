@@ -6,6 +6,7 @@ import HexPlot 1.0
 ColumnLayout {
 
     property bool acquisitionRunning: false
+    property alias nBins: binsSlider.value
 
     HexPlot {
         id: plt
@@ -16,6 +17,8 @@ ColumnLayout {
         plotLayout.axes.y_label: "Stoichiometry"
         nBinsX: binsSlider.value
         nBinsY: binsSlider.value
+
+        initialScaleMax: 5
     }
 
     RowLayout {

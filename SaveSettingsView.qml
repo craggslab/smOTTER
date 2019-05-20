@@ -1,8 +1,9 @@
 import QtQuick 2.12
 import QtQuick.Controls 2.5
 import QtQuick.Layouts 1.12
-import QtQuick.Dialogs 1.2
+//import QtQuick.Dialogs 1.2
 import QtQuick.Controls.Material 2.3
+import Qt.labs.platform 1.1
 
 ScrollView {
     id: scrollView
@@ -73,12 +74,12 @@ ScrollView {
             FileDialog {
                 id: folderDialog
                 title: qsTr("Choose a folder")
-                folder: shortcuts.home
+                folder: StandardPaths.writableLocation(StandardPaths.HomeLocation)
                 nameFilters: [ "Photon-HDF5 Files (*.h5 *.hdf5)" ]
-                selectExisting: false
-                sidebarVisible: true
+                fileMode: FileDialog.SaveFile
+                options: FileDialog.DontConfirmOverwrite
                 onAccepted: {
-                    fileTextField.text = fileUrl.toString().replace(/^(file:\/{3})/,"");
+                    fileTextField.text = file.toString().replace(/^(file:\/{3})/,"");
                 }
             }
         }
