@@ -73,17 +73,40 @@ PhotonStore::LaserPowerWriteLock PhotonStore::getLaserPowerWriteLockObject() {
     return LaserPowerWriteLock(m_laserPowerMutex, std::defer_lock);
 }
 
-void PhotonStore::clear(const PhotonWriteLock& ph_lock, const LaserPowerWriteLock& lp_lock)
+PhotonStore::PhotonArrivalLock PhotonStore::getPhotonArrivalLockObject()
+{
+   return PhotonArrivalLock(m_photonArrivalMutex, std::defer_lock);
+}
+
+PhotonStore::PhotonArrivalWriteLock PhotonStore::getPhotonArrivalWriteLockObject()
+{
+    return PhotonArrivalWriteLock(m_photonArrivalMutex, std::defer_lock);
+}
+
+void PhotonStore::clear(const PhotonWriteLock& ph_lock, const LaserPowerWriteLock& lp_lock, const PhotonArrivalWriteLock& pa_lock)
 {
     if (!ph_lock.owns_lock())
         throw std::invalid_argument("Photon lock object does not own lock (PhotonStore::clear)!");
 
     if (!lp_lock.owns_lock())
-        throw std::invalid_argument("Laser power lcok object does not own lock (PhotonStore::clear)!");
+        throw std::invalid_argument("Laser power lock object does not own lock (PhotonStore::clear)!");
+
+    if (!pa_lock.owns_lock())
+        throw std::invalid_argument("Photon arrival lock object does not own lock (PhotonStore::clear)!");
 
     m_binnedPhotons.clear();
     m_photons.clear();
     m_laserPowers.clear();
+    m_arrivalTimes.fill(0);
+}
+
+void PhotonStore::updateArrivalTimes(const PhotonArrivalType &arrivals, PhotonArrivalWriteLock &lock)
+{
+    if (!lock.owns_lock())
+        throw std::invalid_argument("Photon arrival lock object does not own lock (PhotonStore::updateArrivalTimes)!");
+
+    for (size_t i = 0; i < arrivals.size(); i++)
+        m_arrivalTimes[i] += arrivals[i];
 }
 
 void PhotonStore::spliceNewPhotons(std::list<Photon>& newPhotons, const PhotonWriteLock& lock)
@@ -135,6 +158,14 @@ PhotonStore::IteratorStruct<PhotonStore::ConstLaserPowerIterator> PhotonStore::l
         throw std::invalid_argument("Lock object does not own lock (PhotonStore::laserPowers)!");
 
     return IteratorStruct(m_laserPowers.cbegin(), m_laserPowers.cend());
+}
+
+PhotonStore::IteratorStruct<PhotonStore::ConstPhotonArrivalIterator> PhotonStore::photonArrivalTimes(const PhotonArrivalLock& lock) const
+{
+    if (!lock.owns_lock())
+        throw std::invalid_argument("Lock object does not own lock (PhotonStore::photonArrivalTimes)");
+
+    return IteratorStruct(m_arrivalTimes.cbegin(), m_arrivalTimes.cend());
 }
 
 PhotonStore::ConstPhotonBlockIterator PhotonStore::findBin(uint64_t bin, const PhotonLock& lock) const

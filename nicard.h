@@ -71,7 +71,8 @@ private:
 
     NIResult readPhotonsIntoBuffer(TaskHandle counterTask, std::vector<uInt32>& buff) const;
     NIResult analysePhotons(const std::vector<uInt32>& buffer, uInt32& previousValue, uInt64& offset, FluorophoreType detector,
-                                              std::list<Photon>& newPhotons, std::unordered_map<uint64_t, PhotonBlock>& newPhotonsBinned);
+                            std::list<Photon>& newPhotons, std::unordered_map<uint64_t, PhotonBlock>& newPhotonsBinned,
+                            PhotonStore::PhotonArrivalType& arrivalTimes);
     NIResult readPhotons();
     NIResult readLaserPower();
 

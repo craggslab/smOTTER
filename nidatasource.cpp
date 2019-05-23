@@ -307,6 +307,20 @@ void NIDataSource::updateESHistogram(HexPlot::HexPlot *hexPlot, quint64 threshol
         hexPlot->addData(newData);
 }
 
+void NIDataSource::updatePhotonArrivalTimes(PhotonArrivalGraph::PhotonArrivalGraph* pag)
+{
+    auto& store = m_device->getPhotonStore();
+    auto lock = store.getPhotonArrivalLockObject();
+    if (!lock.try_lock_for(10ms))
+        return;
+
+    auto itrs = store.photonArrivalTimes(lock);
+    auto values = std::vector<uint32_t>(itrs.begin(), itrs.end());
+    lock.unlock();
+
+    pag->updateData(values, PhotonStore::nPhotonArrivalBins);
+}
+
 void NIDataSource::saveNewPhotons(bool endOfAcquisition)
 {
     auto& store = m_device->getPhotonStore();

@@ -188,14 +188,16 @@ NICard::NIResult NICard::prime(bool live)
     return std::nullopt;
 }
 
-NICard::NIResult NICard::start(bool live)
+NICard::NIResult NICard::start(bool)
 {
     {
         auto ph_lock = m_photonStore.getWriteLockObject();
         auto lp_lock = m_photonStore.getLaserPowerWriteLockObject();
+        auto pa_lock = m_photonStore.getPhotonArrivalWriteLockObject();
         ph_lock.lock();
         lp_lock.lock();
-        m_photonStore.clear(ph_lock, lp_lock);
+        pa_lock.lock();
+        m_photonStore.clear(ph_lock, lp_lock, pa_lock);
     }
 
 
@@ -471,7 +473,8 @@ NICard::NIResult NICard::readPhotonsIntoBuffer(TaskHandle counterTask, std::vect
 }
 
 NICard::NIResult NICard::analysePhotons(const std::vector<uInt32> &buffer, uInt32 &previousPhotonArrival, uInt64 &offset, FluorophoreType detector,
-                                                  std::list<Photon>& newPhotons, std::unordered_map<uint64_t, PhotonBlock>& newPhotonsBinned)
+                                        std::list<Photon>& newPhotons, std::unordered_map<uint64_t, PhotonBlock>& newPhotonsBinned,
+                                        PhotonStore::PhotonArrivalType& arrivalTimes)
 {
     using namespace std::chrono;
     using unsigned_ms = duration<uint64_t, std::ratio<1,1000>>;
@@ -485,6 +488,9 @@ NICard::NIResult NICard::analysePhotons(const std::vector<uInt32> &buffer, uInt3
 
         auto time = (offset + photonArrivalTime - m_digitalOutputDelay)*10ns;
         auto timeRelativeToAlex = time % m_alexPeriod;
+        auto arrivalBin = static_cast<size_t>(PhotonStore::nPhotonArrivalBins *
+                                              (timeRelativeToAlex.count() / static_cast<float>(duration_cast<nanoseconds>(m_alexPeriod).count())));
+
 
         if (detector == FluorophoreType::Donor)
         {
@@ -492,6 +498,8 @@ NICard::NIResult NICard::analysePhotons(const std::vector<uInt32> &buffer, uInt3
             {
                 newPhotons.emplace_back(time, PhotonType::DD);
                 newPhotonsBinned[duration_cast<unsigned_ms>(time).count()].countPhoton<PhotonType::DD>();
+
+                arrivalTimes[PhotonStore::photonArrivalArrayOffset<PhotonType::DD>() + arrivalBin]++;
             }
             else
             {
@@ -506,11 +514,15 @@ NICard::NIResult NICard::analysePhotons(const std::vector<uInt32> &buffer, uInt3
             {
                 newPhotons.emplace_back(time, PhotonType::DA);
                 newPhotonsBinned[duration_cast<unsigned_ms>(time).count()].countPhoton<PhotonType::DA>();
+
+                arrivalTimes[PhotonStore::photonArrivalArrayOffset<PhotonType::DA>() + arrivalBin]++;
             }
             else if (m_acceptorLaserDutyCycle.isLaserOn(timeRelativeToAlex))
             {
                 newPhotons.emplace_back(time, PhotonType::AA);
                 newPhotonsBinned[duration_cast<unsigned_ms>(time).count()].countPhoton<PhotonType::AA>();
+
+                arrivalTimes[PhotonStore::photonArrivalArrayOffset<PhotonType::AA>() + arrivalBin]++;
             }
             else
             {
@@ -534,6 +546,10 @@ NICard::NIResult NICard::readPhotons()
     std::list<Photon> newPhotons;
     std::unordered_map<uint64_t, PhotonBlock> newPhotonsBinned;
 
+    PhotonStore::PhotonArrivalType newArrivalTimes;
+    newArrivalTimes.fill(0);
+    bool arrivalTimesAvailable = false;
+
     while (!m_stopReadPhotons)
     {
         if (auto err = readPhotonsIntoBuffer(m_donorCounterTask, donorBuffer); err.has_value())
@@ -543,10 +559,16 @@ NICard::NIResult NICard::readPhotons()
             return err;
 
         if (donorBuffer.size())
-            analysePhotons(donorBuffer, previousDonorArrivalTime, donorOffsetValue, FluorophoreType::Donor, newPhotons, newPhotonsBinned);
+        {
+            analysePhotons(donorBuffer, previousDonorArrivalTime, donorOffsetValue, FluorophoreType::Donor, newPhotons, newPhotonsBinned, newArrivalTimes);
+            arrivalTimesAvailable = true;
+        }
 
         if (acceptorBuffer.size())
-            analysePhotons(acceptorBuffer, previousAcceptorArrivalTime, acceptorOffsetValue, FluorophoreType::Acceptor, newPhotons,  newPhotonsBinned);
+        {
+            analysePhotons(acceptorBuffer, previousAcceptorArrivalTime, acceptorOffsetValue, FluorophoreType::Acceptor, newPhotons,  newPhotonsBinned, newArrivalTimes);
+            arrivalTimesAvailable = false;
+        }
 
         if (newPhotons.size() > 0)
         {
@@ -561,6 +583,18 @@ NICard::NIResult NICard::readPhotons()
                 }
 
                 newPhotonsBinned.clear();
+            }
+        }
+
+        if (arrivalTimesAvailable)
+        {
+            auto lock = m_photonStore.getPhotonArrivalWriteLockObject();
+
+            if (lock.try_lock_for(1us))
+            {
+                m_photonStore.updateArrivalTimes(newArrivalTimes, lock);
+                newArrivalTimes.fill(0);
+                arrivalTimesAvailable = false;
             }
         }
     }

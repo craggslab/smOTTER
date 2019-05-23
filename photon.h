@@ -5,6 +5,7 @@
 #include <list>
 #include <chrono>
 #include <shared_mutex>
+#include <array>
 
 enum class PhotonType {
     DD,
@@ -28,6 +29,20 @@ public:
     using LaserPowerWriteLock = std::unique_lock<LaserPowerMutex>;
     using ConstLaserPowerIterator = std::list<double>::const_iterator;
 
+    static constexpr size_t nPhotonArrivalBins = 100;
+    using PhotonArrivalMutex = std::shared_timed_mutex;
+    using PhotonArrivalLock = std::shared_lock<PhotonArrivalMutex>;
+    using PhotonArrivalWriteLock = std::unique_lock<PhotonArrivalMutex>;
+    using PhotonArrivalType = std::array<uint32_t, 3*nPhotonArrivalBins>;
+    using ConstPhotonArrivalIterator = PhotonArrivalType::const_iterator;
+
+    template<PhotonType photonType>
+    static constexpr size_t photonArrivalArrayOffset() {
+        if constexpr (photonType == PhotonType::DD) return 0;
+        else if constexpr (photonType == PhotonType::AA) return nPhotonArrivalBins;
+        else return 2 * nPhotonArrivalBins;
+    }
+
     template<typename T>
     struct IteratorStruct {
         friend class PhotonStore;
@@ -50,12 +65,16 @@ public:
     PhotonLock getReadLockObject();
     PhotonWriteLock getWriteLockObject();
 
+    LaserPowerLock getLaserPowerLockObject();
+    LaserPowerWriteLock getLaserPowerWriteLockObject();
+
+    PhotonArrivalLock getPhotonArrivalLockObject();
+    PhotonArrivalWriteLock getPhotonArrivalWriteLockObject();
+
     IteratorStruct<ConstPhotonIterator> photons(const PhotonLock& lock) const;
     IteratorStruct<ConstPhotonBlockIterator> binnedPhotons(const PhotonLock& lock) const;
     ConstPhotonBlockIterator findBin(uint64_t bin, const PhotonLock& lock) const;
-
-    LaserPowerLock getLaserPowerLockObject();
-    LaserPowerWriteLock getLaserPowerWriteLockObject();
+    IteratorStruct<ConstPhotonArrivalIterator> photonArrivalTimes(const PhotonArrivalLock& lock) const;
 
     IteratorStruct<ConstLaserPowerIterator> laserPowers(const LaserPowerLock& lock) const;
 
@@ -63,14 +82,17 @@ public:
     void combinePhotonBlock(uint64_t bin, PhotonBlock& block, const PhotonWriteLock& lock);
     void spliceNewLaserPowers(std::list<double>& newLaserPowers, const LaserPowerWriteLock& lock);
     void spliceLaserPowersTo(std::list<double>& target, const LaserPowerWriteLock& lock);
-    void clear(const PhotonWriteLock& ph_lock, const LaserPowerWriteLock& lp_lock);
+    void clear(const PhotonWriteLock& ph_lock, const LaserPowerWriteLock& lp_lock, const PhotonArrivalWriteLock& pa_lock);
+    void updateArrivalTimes(const PhotonArrivalType& arrivals, PhotonArrivalWriteLock& lock);
 private:
     PhotonMutex m_detectedPhotonsMutex;
     LaserPowerMutex m_laserPowerMutex;
+    PhotonArrivalMutex m_photonArrivalMutex;
 
     std::list<Photon> m_photons;
     std::unordered_map<uint64_t, PhotonBlock> m_binnedPhotons;
     std::list<double> m_laserPowers;
+    PhotonArrivalType m_arrivalTimes;
 };
 
 struct Photon

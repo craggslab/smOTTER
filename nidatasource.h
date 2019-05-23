@@ -5,6 +5,9 @@
 #include <QAbstractSeries>
 #include <QStringList>
 #include <QString>
+#include <QBarSet>
+#include <QValueAxis>
+
 #include <mutex>
 #include <optional>
 #include <chrono>
@@ -13,6 +16,7 @@
 #include "photonhdf5exporter.h"
 #include "nicard.h"
 #include "hexplot.h"
+#include "photonarrivalgraph.h"
 
 QT_BEGIN_NAMESPACE
 class QQuickView;
@@ -107,6 +111,7 @@ public slots:
 
     void updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *AASeries, QAbstractSeries *DASeries, quint64 min_t, quint64 max_t);
     void updateESHistogram(HexPlot::HexPlot *hexPlot, quint64 threshold_AA, quint64 threshold_DD_DA, quint64 min_t, quint64 max_t);
+    void updatePhotonArrivalTimes(PhotonArrivalGraph::PhotonArrivalGraph* pag);
 
     void saveNewPhotons(bool endOfAcquisition);
     bool fileExists();

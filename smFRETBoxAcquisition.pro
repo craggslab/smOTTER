@@ -19,7 +19,8 @@ SOURCES += \
     photon.cpp \
     photonhdf5exporter.cpp \
     radialbar.cpp \
-    hexplot.cpp
+    hexplot.cpp \
+    photonarrivalgraph.cpp
 
 RESOURCES += qml.qrc
 
@@ -50,7 +51,8 @@ HEADERS += \
     photonhdf5helper.h \
     radialbar.h \
     hexlayout.h \
-    hexplot.h
+    hexplot.h \
+    photonarrivalgraph.h
 
 win32:CONFIG(release, debug|release): LIBS += $$PWD/../HDF5/lib64/libhdf5.lib
 else:win32:CONFIG(debug, debug|release): LIBS += $$PWD/../HDF5/lib64/libhdf5_D.lib
@@ -75,3 +77,5 @@ else:win32:CONFIG(debug, debug|release): LIBS += $$PWD/../HDF5/lib64/libzlib_D.l
 
 INCLUDEPATH += $$PWD/../HDF5/include
 DEPENDPATH += $$PWD/../HDF5/include
+
+win32:RC_ICONS += smotter.ico

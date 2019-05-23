@@ -7,7 +7,7 @@ import QtQuick.Dialogs 1.2
 import QtQuick.Controls.Material 2.3
 import QtQuick.Controls.Universal 2.3
 import Qt.labs.settings 1.1
-
+import PhotonArrivalGraph 1.0
 
 Pane {
     id: mainWindow
@@ -161,15 +161,21 @@ Pane {
                 }
 
                 Page {
-                    TextArea {
-                        width: parent.width
-                        height: parent.height
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
 
-                        text: "Coming soon...."
-                        horizontalAlignment: TextEdit.AlignHCenter
-                        verticalAlignment: TextEdit.AlignVCenter
+                    PhotonArrivalGraph {
+                        id: photonArrivalGraph
+                        anchors.fill: parent
 
-                        enabled: false
+                        donorLaserStart: laserDutyCycles.donorOffPercent / 100.0
+                        donorLaserEnd: (laserDutyCycles.donorOnPercent + laserDutyCycles.donorOffPercent) / 100.0
+                        acceptorLaserStart: laserDutyCycles.acceptorOffPercent / 100.0
+                        acceptorLaserEnd: (laserDutyCycles.acceptorOnPercent + laserDutyCycles.acceptorOffPercent) / 100.0
+
+                        function updatePAGraph() {
+                            dataSource.updatePhotonArrivalTimes(photonArrivalGraph);
+                        }
                     }
                 }
 
@@ -277,8 +283,9 @@ Pane {
         repeat: true
 
         onTriggered: {
-            traceView.updateDisplay()
-            esHistogram.updateDisplay()
+            traceView.updateDisplay();
+            esHistogram.updateDisplay();
+            photonArrivalGraph.updatePAGraph();
         }
 
         onRunningChanged: {
