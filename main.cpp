@@ -6,12 +6,16 @@
 #include <QQuickStyle>
 #include <QDebug>
 #include <QString>
+#include <QSplashScreen>
 #include <filesystem>
 
 #include "nidatasource.h"
 #include "radialbar.h"
 #include "hexplot.h"
 #include "photonarrivalgraph.h"
+#include "thorcamsource.h"
+#include "byteimage.h"
+#include "zstage.h"
 
 int main(int argc, char *argv[])
 {
@@ -19,6 +23,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     qmlRegisterType<RadialBar>("RadialBar", 1, 0, "RadialBar");
+    qmlRegisterType<ByteImage>("ByteImage", 1, 0, "ByteImage");
     REGISTER_HEX_PLOT_TYPES("HexPlot", 1, 0)
     REGISTER_PHOTON_ARRIVAL_PLOT_TYPES("PhotonArrivalGraph", 1, 0)
 
@@ -35,12 +40,17 @@ int main(int argc, char *argv[])
     viewer.setTitle(QStringLiteral("smFRETBox Acquisition"));
 
     NIDataSource dataSource(&viewer);
-    viewer.rootContext()->setContextProperty("dataSource", &dataSource);
+    ThorCam::ThorCamSource thorcamSource(&viewer);
+    ZStage stage(&viewer);
 
-    viewer.setSource(QUrl("qrc:/main.qml"));
+    viewer.rootContext()->setContextProperty("dataSource", &dataSource);
+    viewer.rootContext()->setContextProperty("thorcam", &thorcamSource);
+    viewer.rootContext()->setContextProperty("mainWindow", &viewer);
+    viewer.rootContext()->setContextProperty("zStage", &stage);
+
+    viewer.setSource(QUrl("qrc:/AppLoader.qml"));
     viewer.setResizeMode(QQuickView::SizeRootObjectToView);
     viewer.show();
-
 
     return app.exec();
 }

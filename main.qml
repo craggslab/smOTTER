@@ -5,31 +5,39 @@ import QtQuick.Layouts 1.12
 import QtQuick.Controls 2.5
 import QtQuick.Dialogs 1.2
 import QtQuick.Controls.Material 2.3
-import QtQuick.Controls.Universal 2.3
 import Qt.labs.settings 1.1
 import PhotonArrivalGraph 1.0
 
 Pane {
-    id: mainWindow
-    width: 1560
-    height: 900
-
+    id: mainComponent
 
     Material.theme: Material.Dark
     Material.primary: Material.BlueGrey
     Material.accent: Material.Blue
 
-    Universal.theme: Universal.Dark
-    Universal.accent: Universal.Cyan
+    property int defaultWidth: 1560
+    property int defaultHeight: 900
+    property bool initialised: false
 
+    Component.onCompleted: {
+        mainWindow.flags = Qt.Window;
 
+        mainWindow.setGeometry(Screen.width / 2 - defaultWidth / 2,
+                               Screen.height / 2 - defaultHeight / 2,
+                               defaultWidth, defaultHeight);
+
+        initialised = true
+    }
+
+    onWidthChanged: {
+        if (initialised) defaultWidth = width;
+    }
+    onHeightChanged: { if (initialised) defaultHeight = height; }
 
     Settings {
         category: "General"
-        property alias mainWindow_x: mainWindow.x
-        property alias mainWindow_y: mainWindow.y
-        property alias mainWindow_width: mainWindow.width
-        property alias mainWindow_height: mainWindow.height
+        property alias mainWindow_width: mainComponent.defaultWidth
+        property alias mainWindow_height: mainComponent.defaultHeight
 
         fileName: "./smfBox_Settings.ini"
     }
@@ -139,6 +147,10 @@ Pane {
                     text: qsTr("NI Card Settings")
                     width: implicitWidth
                 }
+                TabButton {
+                    text: qsTr("Z Focus")
+                    width: implicitWidth
+                }
             }
 
             StackLayout {
@@ -189,8 +201,14 @@ Pane {
                     }
                 }
 
+                Pane {
+                    ZFocusView {
+                        id: zFocus
+                        width: parent.width
+                        height: parent.height
+                    }
+                }
             }
-
         }
 
         GroupBox {

@@ -337,7 +337,7 @@ ScrollView
         Material.primary: Material.BlueGrey
         Material.accent: Material.Blue
 
-        parent: mainWindow
+        parent: mainComponent
         anchors.centerIn: parent
 
         modal: Qt.WindowModal
