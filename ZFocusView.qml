@@ -123,6 +123,7 @@ Item {
                 }
 
                 ComboBox {
+                    id: cmbxCOMPort
                     Layout.fillWidth: true
                     Material.theme: Material.Light
 
@@ -131,6 +132,8 @@ Item {
 
                 Button {
                     text: "Connect"
+
+                    onClicked: zStage.connect(cmbxCOMPort.currentText)
                 }
 
                 Button {
@@ -148,13 +151,22 @@ Item {
                 }
 
                 Slider {
+                    id: zPosSlider
                     Layout.fillWidth: true
 
                     Layout.columnSpan: 2
+
+                    from: 0
+                    to: 300
+                    value: zStage.zPos
+
+                    onPressedChanged: {
+                        if (!pressed) zStage.zPos = value;
+                    }
                 }
 
                 Label {
-                    text: "100 um"
+                    text: zPosSlider.value.toFixed(0) + "μm"
                     verticalAlignment: Text.AlignVCenter
                 }
             }
@@ -167,5 +179,35 @@ Item {
         repeat: true
 
         onTriggered: thorcam.snap(imgDisp);
+    }
+
+    Connections {
+        target: zStage
+        onError: {
+            errorTextArea.text = errMsg;
+            confirmDialog.visible = true
+        }
+    }
+
+    Dialog {
+        id: confirmDialog
+
+        Material.theme: Material.Dark
+        Material.primary: Material.BlueGrey
+        Material.accent: Material.Blue
+
+        parent: mainComponent
+        anchors.centerIn: parent
+
+        modal: Qt.WindowModal
+
+        standardButtons: Dialog.Ok
+
+        title: "Error:"
+
+        Label {
+            id: errorTextArea
+            font.pixelSize: 15
+        }
     }
 }
