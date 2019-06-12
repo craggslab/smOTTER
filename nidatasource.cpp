@@ -2,6 +2,7 @@
 
 #include <QDebug>
 #include <QtCharts/QXYSeries>
+#include <QtCharts/QLegendMarker>
 
 #include <chrono>
 #include <iostream>
@@ -222,7 +223,11 @@ qint64 NIDataSource::timeSinceAcqStart()
 quint64 NIDataSource::getTotalDonorPhotons() { return m_device->getTotalDonorPhotons(); }
 quint64 NIDataSource::getTotalAcceptorPhotons() { return m_device->getTotalAcceptorPhotons(); }
 
-void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *AASeries, QAbstractSeries *DASeries, quint64 min_t, quint64 max_t)
+void NIDataSource::removeSeriesFromLegend(QLegend *legend, QAbstractSeries *series)
+{
+    legend->markers(series)[0]->setVisible(false);
+}
+void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *AASeries, QAbstractSeries *DASeries, QAbstractSeries *currentPosition, quint64 min_t, quint64 max_t, quint64 total, qreal y_min, qreal y_max)
 {
     using namespace std::chrono;
 
@@ -232,10 +237,17 @@ void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *A
     auto DDTrace = static_cast<QXYSeries*>(DDSeries);
     auto AATrace = static_cast<QXYSeries*>(AASeries);
     auto DATrace = static_cast<QXYSeries*>(DASeries);
+    auto currentPositionTrace = static_cast<QXYSeries*>(currentPosition);
 
-    QVector<QPointF> DDPoints(static_cast<int>(max_t - min_t));
-    QVector<QPointF> AAPoints(static_cast<int>(max_t - min_t));
-    QVector<QPointF> DAPoints(static_cast<int>(max_t - min_t));
+    auto showPrevious = max_t - total > 0;
+    auto nPoints = showPrevious > 0 ? total : max_t - min_t;
+    QVector<QPointF> DDPoints(static_cast<int>(nPoints));
+    QVector<QPointF> AAPoints(static_cast<int>(nPoints));
+    QVector<QPointF> DAPoints(static_cast<int>(nPoints));
+
+    QVector<QPointF> currentPositionPoints(2);
+    currentPositionPoints[0] = QPointF(max_t, y_min);
+    currentPositionPoints[1] = QPointF(max_t, y_max);
 
     auto& store = m_device->getPhotonStore();
 
@@ -263,11 +275,32 @@ void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *A
         }
     }
 
+    if (showPrevious)
+    {
+        for  (auto t = max_t - total; t < min_t; t++)
+        {
+            auto t_disp = t + total + 1;
+            if (auto itr = store.findBin(t, lock); itr != store.binnedPhotons(lock).end())
+            {
+                DDPoints.push_back(QPointF(t_disp, static_cast<double>(itr->second.nDD)));
+                AAPoints.push_back(QPointF(t_disp, -static_cast<double>(itr->second.nAA)));
+                DAPoints.push_back(QPointF(t_disp, -static_cast<double>(itr->second.nDA)));
+            }
+            else
+            {
+                DDPoints.push_back(QPointF(t_disp, 0));
+                AAPoints.push_back(QPointF(t_disp, 0));
+                DAPoints.push_back(QPointF(t_disp, 0));
+            }
+        }
+    }
+
     lock.unlock();
 
     DDTrace->replace(DDPoints);
     AATrace->replace(AAPoints);
     DATrace->replace(DAPoints);
+    currentPositionTrace->replace(currentPositionPoints);
 }
 
 void NIDataSource::updateESHistogram(HexPlot::HexPlot *hexPlot, quint64 threshold_AA, quint64 threshold_DD_DA, quint64 min_t, quint64 max_t) {

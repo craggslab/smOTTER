@@ -2,10 +2,13 @@ import QtQuick 2.0
 import QtCharts 2.3
 
 ChartView {
+    id: liveChartView
     animationOptions: ChartView.NoAnimation
     theme: ChartView.ChartThemeDark
 
     property bool acquisitionRunning: false
+
+    Component.onCompleted: dataSource.removeSeriesFromLegend(legend, currentPositionMarker)
 
     ValueAxis {
         id: axisY
@@ -48,9 +51,17 @@ ChartView {
         useOpenGL: true
     }
 
+    LineSeries {
+        id: currentPositionMarker
+        axisX: axisX
+        axisY: axisY
+        color: "grey"
+        useOpenGL: true
+    }
+
     function updateDisplay() {
         var t = dataSource.timeSinceAcqStart()
-        dataSource.updateLiveTrace(countsDD, countsAA, countsDA, axisX.min, t)
+        dataSource.updateLiveTrace(countsDD, countsAA, countsDA, currentPositionMarker, axisX.min, t, 1000, axisY.min, axisY.max)
 
         if (t > axisX.max)
         {
@@ -67,6 +78,4 @@ ChartView {
         axisX.min = 0
         axisX.max = 1000
     }
-
-
 }

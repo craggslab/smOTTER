@@ -7,6 +7,7 @@
 #include <QString>
 #include <QBarSet>
 #include <QValueAxis>
+#include <QtCharts/QLegend>
 
 #include <mutex>
 #include <optional>
@@ -109,7 +110,8 @@ public slots:
     quint64 getTotalDonorPhotons();
     quint64 getTotalAcceptorPhotons();
 
-    void updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *AASeries, QAbstractSeries *DASeries, quint64 min_t, quint64 max_t);
+    void removeSeriesFromLegend(QLegend* chart, QAbstractSeries *series);
+    void updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *AASeries, QAbstractSeries *DASeries, QAbstractSeries *currentPosition, quint64 min_t, quint64 max_t, quint64 total, qreal y_min, qreal y_max);
     void updateESHistogram(HexPlot::HexPlot *hexPlot, quint64 threshold_AA, quint64 threshold_DD_DA, quint64 min_t, quint64 max_t);
     void updatePhotonArrivalTimes(PhotonArrivalGraph::PhotonArrivalGraph* pag);
 
