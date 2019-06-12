@@ -47,12 +47,13 @@ bool ZStage::connect(const QString& port) {
     if (!readResponse(response))
         return false;
 
-    if (!response.toUpper().contains("PIEZOCONCEPT PRODUCT:"))
+    if (!response.toUpper().contains("PIEZOCONCEPT PRODUCT"))
     {
-        emit error("Unrecognised response from " + port);
+        emit error("Unrecognised response from " + port + "\n" + response.toUpper());
         return false;
     }
 
+    emit onZPosChanged();
     m_connected = true;
     return true;
 }
@@ -75,7 +76,7 @@ bool ZStage::readResponse(QString& out, int timeout) {
     }
 
     auto resposeData = m_port.readAll();
-    while(m_port.waitForReadyRead(10))
+    while(m_port.waitForReadyRead(20))
         resposeData += m_port.readAll();
 
     out = QString::fromUtf8(resposeData);
@@ -95,18 +96,18 @@ quint32 ZStage::getZPos()
         return 0;
 
     QTextStream stream(&response);
-    int pos = -1; QString unit;
-    stream >> pos >> unit;
+    int pos = -1;
+    stream >> pos;
 
     if (pos == -1) {
-        emit error("Invalid response from " + m_port.portName());
+        emit error("Invalid response from " + m_port.portName() + "\n" + response);
         return 0;
     }
 
-    if (unit.trimmed() == "um") return static_cast<quint32>(pos);
-    if (unit.trimmed() == "nm") return static_cast<quint32>(pos / 1000);
+    if (response.contains("um")) return static_cast<quint32>(pos);
+    if (response.contains("nm")) return static_cast<quint32>(pos / 1000);
 
-    emit error("Warning: Invalid position unit in response from " + m_port.portName());
+    emit error("Warning: Invalid position unit in response from " + m_port.portName() + "\n" + response);
     return static_cast<quint32>(pos);
 }
 
@@ -118,7 +119,7 @@ void ZStage::setZPos(quint32 pos)
         return;
     }
 
-    if (!write(QString("MOVEZ %1um").arg(pos)))
+    if (!write(QString("MOVEZ %1u\n").arg(pos)))
         return;
 
     QString response;
