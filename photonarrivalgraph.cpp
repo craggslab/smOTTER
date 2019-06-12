@@ -45,14 +45,20 @@ namespace PhotonArrivalGraph {
 
         for (size_t i = 0; i < m_nbins; i++)
         {
-            auto DD_top = graphArea.bottom() - (m_data[i] / max) * graphArea.height() ;
-            auto AA_top = DD_top - (m_data[i + m_nbins] / max) * graphArea.height();
-            auto DA_top = AA_top - (m_data[i + 2 * m_nbins] / max) * graphArea.height();
+            auto NN_top = graphArea.bottom() - (m_data[i] / max) * graphArea.height();
+            auto DD_top = NN_top - (m_data[i + m_nbins] / max) * graphArea.height() ;
+            auto AA_top = DD_top - (m_data[i + 2 * m_nbins] / max) * graphArea.height();
+            auto DA_top = AA_top - (m_data[i + 3 * m_nbins] / max) * graphArea.height();
+
+            auto NN_Rect = QRectF(graphArea.left() + i * binWidth,
+                    NN_top,
+                    binWidth,
+                    graphArea.bottom() - NN_top);
 
             auto DD_Rect = QRectF(graphArea.left() + i * binWidth,
                     DD_top,
                     binWidth,
-                    graphArea.bottom() - DD_top);
+                    NN_top - DD_top);
 
             auto AA_Rect = QRectF(graphArea.left() + i * binWidth,
                                   AA_top,
@@ -64,12 +70,12 @@ namespace PhotonArrivalGraph {
                                   binWidth,
                                   AA_top - DA_top);
 
-
+            painter->setBrush(getBarGradient(QColor("grey")));
+            painter->drawRect(NN_Rect);
             painter->setBrush(getBarGradient(m_DDColor));
             painter->drawRect(DD_Rect);
             painter->setBrush(getBarGradient(m_AAColor));
             painter->drawRect(AA_Rect);
-
             painter->setBrush(getBarGradient(m_DAColor));
             painter->drawRect(DA_Rect);
         }
@@ -177,13 +183,14 @@ namespace PhotonArrivalGraph {
         m_data = std::move(data);
         m_nbins = nBins;
 
-        auto DD_start = m_data.begin();
+        auto NN_start = m_data.begin();
+        auto DD_start = std::next(NN_start, nBins);
         auto AA_start = std::next(DD_start, nBins);
         auto DA_start = std::next(AA_start, nBins);
 
         m_dataMax = 0;
         for (int i = 0; i < static_cast<int>(nBins); i++) {
-            auto total = *std::next(DD_start, i) + *std::next(AA_start, i) + *std::next(DA_start, i);
+            auto total = *std::next(NN_start, i) +  *std::next(DD_start, i) + *std::next(AA_start, i) + *std::next(DA_start, i);
             m_dataMax = std::max(m_dataMax, total);
         }
 
@@ -203,9 +210,10 @@ namespace PhotonArrivalGraph {
         auto DDWidth = fm.width("DD");
         auto AAWidth = fm.width("AA");
         auto DAWidth = fm.width("DA");
-        auto textWidth = DDWidth + AAWidth + DAWidth;
+        auto NNWidth = fm.width("Noise");
+        auto textWidth = DDWidth + AAWidth + DAWidth + NNWidth;
 
-        auto totalWidth = m_layout.legend.boxSize * 3 + textWidth + m_layout.legend.textGap * 5;
+        auto totalWidth = m_layout.legend.boxSize * 4 + textWidth + m_layout.legend.textGap * 7;
 
         auto x = (legendArea.width() - totalWidth) / 2.0;
 
@@ -236,6 +244,14 @@ namespace PhotonArrivalGraph {
 
         painter->drawText(QPointF(x, legendArea.bottom() - 1), "DA");
         x += DAWidth + m_layout.legend.textGap;
+
+        painter->setBrush(m_NoiseColor);
+        square.moveCenter(QPointF(x + m_layout.legend.boxSize /2.0, legendArea.center().y()));
+        painter->drawRect(square);
+        x += m_layout.legend.boxSize + m_layout.legend.textGap;
+
+        painter->drawText(QPointF(x, legendArea.bottom() - 1), "Noise");
+        x += NNWidth + m_layout.legend.textGap;
 
         painter->restore();
     }

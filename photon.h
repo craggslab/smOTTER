@@ -33,14 +33,14 @@ public:
     using PhotonArrivalMutex = std::shared_timed_mutex;
     using PhotonArrivalLock = std::shared_lock<PhotonArrivalMutex>;
     using PhotonArrivalWriteLock = std::unique_lock<PhotonArrivalMutex>;
-    using PhotonArrivalType = std::array<uint32_t, 3*nPhotonArrivalBins>;
+    using PhotonArrivalType = std::array<uint32_t, 4*nPhotonArrivalBins>;
     using ConstPhotonArrivalIterator = PhotonArrivalType::const_iterator;
 
     template<PhotonType photonType>
     static constexpr size_t photonArrivalArrayOffset() {
-        if constexpr (photonType == PhotonType::DD) return 0;
-        else if constexpr (photonType == PhotonType::AA) return nPhotonArrivalBins;
-        else return 2 * nPhotonArrivalBins;
+        if constexpr (photonType == PhotonType::DD) return nPhotonArrivalBins;
+        else if constexpr (photonType == PhotonType::AA) return 2 * nPhotonArrivalBins;
+        else return 3 * nPhotonArrivalBins;
     }
 
     template<typename T>

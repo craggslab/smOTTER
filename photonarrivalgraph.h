@@ -121,6 +121,7 @@ namespace PhotonArrivalGraph {
         Q_PROPERTY(QColor ddColor READ DDColor WRITE setDDColor)
         Q_PROPERTY(QColor aaColor READ AAColor WRITE setAAColor)
         Q_PROPERTY(QColor daColor READ DAColor WRITE setDAColor)
+        Q_PROPERTY(QColor noiseColor READ NoiseColor WRITE setNoiseColor)
         Q_PROPERTY(QColor donorLaserColor READ donorLaserColor WRITE setDonorLaserColor)
         Q_PROPERTY(QColor acceptorLaserColor READ acceptorLaserColor WRITE setAcceptorLaserColor)
         Q_PROPERTY(qreal donorLaserStart READ donorLaserStart WRITE setDonorLaserStart)
@@ -141,6 +142,8 @@ namespace PhotonArrivalGraph {
         void setAAColor(const QColor &color) { m_AAColor = color; }
         QColor DAColor() const { return m_DAColor; }
         void setDAColor(const QColor &color) { m_DAColor = color; }
+        QColor NoiseColor() const { return m_NoiseColor; }
+        void setNoiseColor(const QColor &color) { m_NoiseColor = color; }
 
         QColor donorLaserColor() const { return m_donorLaserColor; }
         void setDonorLaserColor(const QColor &color) { m_donorLaserColor = color; }
@@ -169,6 +172,7 @@ namespace PhotonArrivalGraph {
         QColor m_DDColor = { 0, 255, 0};
         QColor m_AAColor = { 255, 255, 0};
         QColor m_DAColor = { 255, 0, 0 };
+        QColor m_NoiseColor = QColor("grey");
 
         QColor m_donorLaserColor = { 0, 255, 0 };
         QColor m_acceptorLaserColor = { 255, 0, 0 };
