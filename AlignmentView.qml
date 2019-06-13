@@ -21,9 +21,10 @@ Item {
 
                orientation: Qt.Vertical
 
-               from: 10
-               to: 200
-               value: 50
+               from: 10000
+               to: 50000
+               value: 40000
+               stepSize: 100
            }
 
            ChartView {
