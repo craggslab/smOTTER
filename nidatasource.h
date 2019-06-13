@@ -39,15 +39,12 @@ class NIDataSource : public QObject
 public:
     explicit NIDataSource(QQuickView *appViewer, QObject *parent = nullptr);
 
-
     const QStringList availableDevices() const;
     const QStringList digitalOutLines() const;
     const QStringList counters() const;
     const QStringList counterLines() const;
     const QStringList timebases() const;
     const QStringList analogueInLines() const;
-
-
 
 signals:
     void availableDevicesChanged();
@@ -112,6 +109,7 @@ public slots:
 
     void removeSeriesFromLegend(QLegend* chart, QAbstractSeries *series);
     void updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *AASeries, QAbstractSeries *DASeries, QAbstractSeries *currentPosition, quint64 min_t, quint64 max_t, quint64 total, qreal y_min, qreal y_max);
+    void updateAlignmentTrace(QAbstractSeries* donor, QAbstractSeries* acceptor, QAbstractSeries* currentPosition, quint32 binning, quint64 min_t, quint64 max_t, quint64 total, qreal y_min, qreal y_max);
     void updateESHistogram(HexPlot::HexPlot *hexPlot, quint64 threshold_AA, quint64 threshold_DD_DA, quint64 min_t, quint64 max_t);
     void updatePhotonArrivalTimes(PhotonArrivalGraph::PhotonArrivalGraph* pag);
 

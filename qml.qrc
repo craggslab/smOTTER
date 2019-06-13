@@ -10,5 +10,6 @@
         <file>AppLoader.qml</file>
         <file>splash.png</file>
         <file>ZFocusView.qml</file>
+        <file>AlignmentView.qml</file>
     </qresource>
 </RCC>

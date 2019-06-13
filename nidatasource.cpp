@@ -240,7 +240,7 @@ void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *A
     auto currentPositionTrace = static_cast<QXYSeries*>(currentPosition);
 
     auto showPrevious = max_t - total > 0;
-    auto nPoints = showPrevious > 0 ? total : max_t - min_t;
+    auto nPoints = showPrevious ? total : max_t - min_t;
     QVector<QPointF> DDPoints(static_cast<int>(nPoints));
     QVector<QPointF> AAPoints(static_cast<int>(nPoints));
     QVector<QPointF> DAPoints(static_cast<int>(nPoints));
@@ -301,6 +301,108 @@ void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *A
     AATrace->replace(AAPoints);
     DATrace->replace(DAPoints);
     currentPositionTrace->replace(currentPositionPoints);
+}
+
+void NIDataSource::updateAlignmentTrace(QAbstractSeries* donorSeries, QAbstractSeries* acceptorSeries, QAbstractSeries* currentPosition, quint32 binning, quint64 min_t, quint64 max_t, quint64 total, qreal y_min, qreal y_max) {
+    using namespace std::chrono;
+
+    if (!m_device->isRunning())
+        return;
+
+    auto currentPositionTrace = static_cast<QXYSeries*>(currentPosition);
+    QVector<QPointF> currentPositionPoints(2);
+    currentPositionPoints[0] = QPointF(max_t, y_min);
+    currentPositionPoints[1] = QPointF(max_t, y_max);
+
+    currentPositionTrace->replace(currentPositionPoints);
+
+    auto donorTrace = static_cast<QXYSeries*>(donorSeries);
+    auto acceptorTrace = static_cast<QXYSeries*>(acceptorSeries);
+
+    auto showPrevious = max_t - total > 0;
+    auto nPoints = (showPrevious ? total : max_t - min_t) / binning;
+    if (nPoints == 0) return;
+
+    QVector<QPointF> donorPoints(static_cast<int>(nPoints));
+    QVector<QPointF> acceptorPoints(static_cast<int>(nPoints));
+
+    auto& store = m_device->getPhotonStore();
+
+    auto lock = store.getReadLockObject();
+    if (!lock.try_lock_for(10ms))
+        return;
+
+    donorTrace->clear();
+    acceptorTrace->clear();
+
+    for (auto t_start = min_t; t_start <= max_t; t_start += binning)
+    {
+        qreal donorTotal = 0, acceptorTotal = 0;
+        for (auto t = t_start; t < t_start + binning; t++)
+        {
+            if (auto itr = store.findBin(t, lock); itr != store.binnedPhotons(lock).end())
+            {
+                donorTotal += itr->second.nDD;
+                acceptorTotal -= (itr->second.nDA + itr->second.nAA);
+            }
+        }
+        donorPoints.push_back(QPointF(t_start, donorTotal));
+        acceptorPoints.push_back(QPointF(t_start, acceptorTotal));
+    }
+
+    if (showPrevious)
+    {
+        auto start = ((max_t - total + binning - 1) / binning) * binning;
+        for (auto t_start = start; t_start < max_t; t_start += binning)
+        {
+            auto t_disp = t_start + total + binning;
+            qreal donorTotal = 0, acceptorTotal = 0;
+            for (auto t = t_start; t < t_start + binning; t++)
+            {
+                if (auto itr = store.findBin(t, lock); itr != store.binnedPhotons(lock).end())
+                {
+                    donorTotal += itr->second.nDD;
+                    acceptorTotal -= (itr->second.nDA + itr->second.nAA);
+                }
+            }
+            donorPoints.push_back(QPointF(t_disp, donorTotal));
+            acceptorPoints.push_back(QPointF(t_disp, acceptorTotal));
+        }
+    }
+
+    lock.unlock();
+
+    donorTrace->replace(donorPoints);
+    acceptorTrace->replace(acceptorPoints);
+
+    /*
+
+    if (showPrevious)
+    {
+        for  (auto t = max_t - total; t < min_t; t++)
+        {
+            auto t_disp = t + total + 1;
+            if (auto itr = store.findBin(t, lock); itr != store.binnedPhotons(lock).end())
+            {
+                DDPoints.push_back(QPointF(t_disp, static_cast<double>(itr->second.nDD)));
+                AAPoints.push_back(QPointF(t_disp, -static_cast<double>(itr->second.nAA)));
+                DAPoints.push_back(QPointF(t_disp, -static_cast<double>(itr->second.nDA)));
+            }
+            else
+            {
+                DDPoints.push_back(QPointF(t_disp, 0));
+                AAPoints.push_back(QPointF(t_disp, 0));
+                DAPoints.push_back(QPointF(t_disp, 0));
+            }
+        }
+    }
+
+    lock.unlock();
+
+    DDTrace->replace(DDPoints);
+    AATrace->replace(AAPoints);
+    DATrace->replace(DAPoints);
+    */
 }
 
 void NIDataSource::updateESHistogram(HexPlot::HexPlot *hexPlot, quint64 threshold_AA, quint64 threshold_DD_DA, quint64 min_t, quint64 max_t) {

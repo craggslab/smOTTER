@@ -144,11 +144,15 @@ Pane {
                     width: implicitWidth
                 }
                 TabButton {
-                    text: qsTr("NI Card Settings")
+                    text: qsTr("Z Focus")
                     width: implicitWidth
                 }
                 TabButton {
-                    text: qsTr("Z Focus")
+                    text: qsTr("Alignment")
+                    width: implicitWidth
+                }
+                TabButton {
+                    text: qsTr("NI Card Settings")
                     width: implicitWidth
                 }
             }
@@ -192,20 +196,39 @@ Pane {
                 }
 
                 Pane {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
+                    ZFocusView {
+                        id: zFocus
+                        width: parent.width
+                        height: parent.height
+                    }
+                }
+
+                Pane {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
+                    AlignmentView {
+                        id: alignment
+                        width: parent.width
+                        height: parent.height
+
+                        acquisitionRunning: acquisitionSettings.acquisitionRunning
+                    }
+                }
+
+                Pane {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
                     NISettingsView {
                         id: niSettings
                         width: parent.width
                         height: parent.height
 
                         enabled: !acquisitionSettings.acquisitionRunning
-                    }
-                }
-
-                Pane {
-                    ZFocusView {
-                        id: zFocus
-                        width: parent.width
-                        height: parent.height
                     }
                 }
             }
@@ -304,6 +327,7 @@ Pane {
             traceView.updateDisplay();
             esHistogram.updateDisplay();
             photonArrivalGraph.updatePAGraph();
+            alignment.updateDisplay();
         }
 
         onRunningChanged: {
@@ -311,6 +335,7 @@ Pane {
             {
                 traceView.resetDisplay()
                 esHistogram.resetDisplay()
+                alignment.resetDisplay()
             }
         }
     }
