@@ -199,7 +199,6 @@ bool NIDataSource::startAcquisition(bool live)
         return false;
     }
 
-
     return true;
 }
 
@@ -279,7 +278,7 @@ void NIDataSource::updateLiveTrace(QAbstractSeries *DDSeries, QAbstractSeries *A
     {
         for  (auto t = max_t - total; t < min_t; t++)
         {
-            auto t_disp = t + total + 1;
+            auto t_disp = t + total;
             if (auto itr = store.findBin(t, lock); itr != store.binnedPhotons(lock).end())
             {
                 DDPoints.push_back(QPointF(t_disp, static_cast<double>(itr->second.nDD)));

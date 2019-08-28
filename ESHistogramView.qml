@@ -85,7 +85,7 @@ ColumnLayout {
     property int last_t: 0
 
     function updateDisplay() {
-        var t = dataSource.timeSinceAcqStart()
+        var t = Math.max(0, dataSource.timeSinceAcqStart() - 500);
 
         dataSource.updateESHistogram(plt, threshold_AA.value, threshold_DD_DA.value, last_t, t)
         last_t = t + 1

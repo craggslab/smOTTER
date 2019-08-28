@@ -60,7 +60,7 @@ ChartView {
     }
 
     function updateDisplay() {
-        var t = dataSource.timeSinceAcqStart()
+        var t = Math.max(0, dataSource.timeSinceAcqStart() - 500);
         dataSource.updateLiveTrace(countsDD, countsAA, countsDA, currentPositionMarker, axisX.min, t, 1000, axisY.min, axisY.max)
 
         if (t > axisX.max)

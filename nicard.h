@@ -112,8 +112,9 @@ private:
     TaskHandle m_laserPowerTask;
 
     bool m_running;
-    std::chrono::steady_clock m_acquisitionClock;
-    std::chrono::time_point<std::chrono::steady_clock> m_acquisitionStart;
+    using clock_type = std::chrono::high_resolution_clock;
+    clock_type m_acquisitionClock;
+    std::chrono::time_point<clock_type> m_acquisitionStart;
 
     std::atomic<bool> m_stopReadPhotons;
     std::future<NIResult> m_readPhotonsResult;

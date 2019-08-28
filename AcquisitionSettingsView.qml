@@ -21,6 +21,7 @@ ScrollView
     property alias savePeriodically: saveIntervalCheckBox.checked
     property alias saveInterval: saveIntervalSpinBox.value
     property alias expLength: experimentLengthSpinBox.value
+    property alias saveLaserPowers: saveLaserPowersCheckBox.checked
 
     GridLayout {
         width: Math.max(implicitWidth, scrollView.availableWidth - sbWidth - 10)

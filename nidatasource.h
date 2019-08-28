@@ -8,6 +8,7 @@
 #include <QBarSet>
 #include <QValueAxis>
 #include <QtCharts/QLegend>
+#include <QElapsedTimer>
 
 #include <mutex>
 #include <optional>

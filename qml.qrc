@@ -11,5 +11,9 @@
         <file>splash.png</file>
         <file>ZFocusView.qml</file>
         <file>AlignmentView.qml</file>
+        <file>AboutView.qml</file>
+        <file>UoS.png</file>
+        <file>bbsrc.png</file>
+        <file>EPSRC.png</file>
     </qresource>
 </RCC>

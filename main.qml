@@ -63,6 +63,7 @@ Pane {
         property alias savePeriodically: acquisitionSettings.savePeriodically
         property alias saveInterval: acquisitionSettings.saveInterval
         property alias expLength: acquisitionSettings.expLength
+        property alias saveLaserPowers: acquisitionSettings.saveLaserPowers
 
         fileName: "./smfBox_Settings.ini"
     }
@@ -155,6 +156,10 @@ Pane {
                     text: qsTr("NI Card Settings")
                     width: implicitWidth
                 }
+                TabButton {
+                    text: qsTr("About")
+                    width: implicitWidth
+                }
             }
 
             StackLayout {
@@ -229,6 +234,16 @@ Pane {
                         height: parent.height
 
                         enabled: !acquisitionSettings.acquisitionRunning
+                    }
+                }
+
+                Pane {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
+                    AboutView {
+                        width: parent.width
+                        height: parent.height
                     }
                 }
             }
