@@ -50,7 +50,7 @@ namespace HexPlot {
 
     void HexPlot::drawHex(QPointF pos, qreal R, QPainter *painter, quint32 value, quint32 max)
     {
-        auto color = getColor(value, max);
+        auto color = getColor(value, max, m_colorMapOffset);
 
         painter->setBrush(QBrush(color));
         painter->setPen(QPen(color));
@@ -155,15 +155,15 @@ namespace HexPlot {
         painter->save();
         for (unsigned int x = 0; x < m_nBinsX; x++)
         {
-        for (unsigned int y = 0; y < m_nBinsY; y++)
-        {
-            QPointF loc { ( x * 2.0 + (y % 2) + 1 ) * r,
+            for (unsigned int y = 0; y < m_nBinsY; y++)
+            {
+                QPointF loc { ( x * 2.0 + (y % 2) + 1 ) * r,
                 ( y * 1.5 + 1.0 ) * R };
 
-            loc += QPointF(plotArea.x(), plotArea.y());
+                loc += QPointF(plotArea.x(), plotArea.y());
 
-            drawHex(loc, R, painter, m_bins[x + y * m_nBinsX], m_scaleMax);
-        }
+                drawHex(loc, R, painter, m_bins[x + y * m_nBinsX], m_scaleMax);
+            }
         }
         painter->restore();
 
@@ -179,7 +179,7 @@ namespace HexPlot {
         auto scalebarArea = m_layout.getScalebarArea(plotArea);
         auto gradient = QLinearGradient(scalebarArea.bottomLeft(), scalebarArea.topLeft());
         for (quint32 i = 0; i < 255; i++)
-        gradient.setColorAt(i/255.0, getColor(i, 255));
+        gradient.setColorAt(i/255.0, getColor(i, 255, m_colorMapOffset));
         painter->setBrush(gradient);
 
         painter->drawRect(scalebarArea);
@@ -303,7 +303,7 @@ namespace HexPlot {
        addData(list);
     }
 
-    QColor HexPlot::getColor(quint32 value, quint32 max)
+    QColor HexPlot::getColor(quint32 value, quint32 max, quint8 offset)
     {
         const static QVector3D viridis_data[] =
             {	 { 0.267004f, 0.004874f, 0.329415f },
@@ -566,7 +566,8 @@ namespace HexPlot {
         if (value == 0)
         return QColor(0, 0, 0, 0);
 
-        auto indx = static_cast<quint8>(( 255 * (value - 1) ) / max);
+        //auto indx = static_cast<quint8>(( (255 - offset) * (value - 1) ) / max) + offset;
+        auto indx = static_cast<quint8>(((255 - offset) * value) / max) + offset;
         auto r = static_cast<qreal>(viridis_data[indx].x());
         auto g = static_cast<qreal>(viridis_data[indx].y());
         auto b = static_cast<qreal>(viridis_data[indx].z());

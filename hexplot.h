@@ -68,7 +68,7 @@ namespace HexPlot {
         void drawScalebar(QPainter *painter, const QRectF& plotArea);
         void drawAxes(QPainter *painter, const QRectF& plotArea);
         void drawTextRotated(QPainter *painter, QRectF textRect, const QString& str, qreal rot);
-        QColor getColor(quint32 value, quint32 max);
+        QColor getColor(quint32 value, quint32 max, quint8 offset = 0);
 
         HexLayout m_layout;
 
@@ -87,6 +87,7 @@ namespace HexPlot {
 
         quint32 m_initialScaleMax = 20;
         quint32 m_scaleMax;
+        quint8 m_colorMapOffset = 30;
 
         // DELETE ME
         std::default_random_engine rnd;

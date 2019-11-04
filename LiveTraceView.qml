@@ -1,62 +1,87 @@
-import QtQuick 2.0
+import QtQuick 2.12
+import QtQuick.Controls 2.12
+import QtQuick.Layouts 1.12
 import QtCharts 2.3
 
-ChartView {
-    id: liveChartView
-    animationOptions: ChartView.NoAnimation
-    theme: ChartView.ChartThemeDark
-
+Item {
     property bool acquisitionRunning: false
 
-    Component.onCompleted: dataSource.removeSeriesFromLegend(legend, currentPositionMarker)
+    RowLayout {
 
-    ValueAxis {
-        id: axisY
-        min: -50
-        max: 50
-        titleText: "Counts"
-    }
+        anchors.fill: parent
 
-    ValueAxis {
-        id: axisX
-        min: 0
-        max: 1000
-        titleText: "Time (ms)"
-    }
+        Slider {
+            id: yAxisRangeSlider
+            Layout.fillWidth: false
+            Layout.fillHeight: true
 
-    LineSeries {
-        id: countsDD
-        name: "DD"
-        axisX: axisX
-        axisY: axisY
-        color: "lime"
-        useOpenGL: true
-    }
+            orientation: Qt.Vertical
 
-    LineSeries {
-        id: countsAA
-        name: "AA"
-        axisX: axisX
-        axisY: axisY
-        color: "yellow"
-        useOpenGL: true
-    }
+            from: 50
+            to: 500
+            value: 50
+            stepSize: 25
+        }
 
-    LineSeries{
-        id: countsDA
-        name: "DA"
-        axisX: axisX
-        axisY: axisY
-        color: "red"
-        useOpenGL: true
-    }
+        ChartView {
+            id: liveChartView
+            animationOptions: ChartView.NoAnimation
+            theme: ChartView.ChartThemeDark
 
-    LineSeries {
-        id: currentPositionMarker
-        axisX: axisX
-        axisY: axisY
-        color: "grey"
-        useOpenGL: true
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+
+            Component.onCompleted: dataSource.removeSeriesFromLegend(legend, currentPositionMarker)
+
+            ValueAxis {
+                id: axisY
+                min: -Math.floor(yAxisRangeSlider.value)
+                max: Math.floor(yAxisRangeSlider.value)
+                titleText: "Counts"
+            }
+
+            ValueAxis {
+                id: axisX
+                min: 0
+                max: 1000
+                titleText: "Time (ms)"
+            }
+
+            LineSeries {
+                id: countsDD
+                name: "DD"
+                axisX: axisX
+                axisY: axisY
+                color: "lime"
+                useOpenGL: true
+            }
+
+            LineSeries {
+                id: countsAA
+                name: "AA"
+                axisX: axisX
+                axisY: axisY
+                color: "yellow"
+                useOpenGL: true
+            }
+
+            LineSeries{
+                id: countsDA
+                name: "DA"
+                axisX: axisX
+                axisY: axisY
+                color: "red"
+                useOpenGL: true
+            }
+
+            LineSeries {
+                id: currentPositionMarker
+                axisX: axisX
+                axisY: axisY
+                color: "grey"
+                useOpenGL: true
+            }
+        }
     }
 
     function updateDisplay() {
@@ -78,4 +103,5 @@ ChartView {
         axisX.min = 0
         axisX.max = 1000
     }
+
 }

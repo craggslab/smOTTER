@@ -105,6 +105,14 @@ Pane {
         fileName: "./smfBox_Settings.ini"
     }
 
+    Settings {
+        category: "ZFocusSettings"
+        property alias comPortDefault: zFocus.comPortDefault
+        property alias thorCamDefault: zFocus.thorCamDefault
+
+        fileName: "./smfBox_Settings.ini"
+    }
+
     GridLayout {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
@@ -174,8 +182,7 @@ Pane {
 
                     LiveTraceView {
                         id: traceView
-                        width: parent.width
-                        height: parent.height
+                        anchors.fill: parent
 
                         acquisitionRunning: acquisitionSettings.acquisitionRunning
                     }

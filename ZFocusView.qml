@@ -7,6 +7,9 @@ import QtQuick.Controls.Material 2.3
 
 Item {
 
+    property alias comPortDefault: cmbxCOMPort.defaultStr
+    property alias thorCamDefault: cmbxThorcam.defaultStr
+
     RowLayout {
         anchors.fill: parent
 
@@ -38,16 +41,24 @@ Item {
                 }
 
                 ComboBox {
+                    id: cmbxThorcam
                     Material.theme: Material.Light
                     Layout.fillWidth: true
 
                     Layout.alignment: Qt.AlignRight
 
+                    property string defaultStr : ""
+
                     model: thorcam.availableCameras
 
+                    currentIndex: findIndexOfDefault(model, defaultStr)
+
                     onCurrentTextChanged: {
-                        if (currentText != "")
+                        if (currentText !== "")
+                        {
+                            defaultStr = currentText
                             thorcam.idChanged(currentText);
+                        }
                     }
                 }
 
@@ -84,7 +95,10 @@ Item {
 
                     text: "⟳"
 
-                    onClicked: thorcam.refreshCameras()
+                    onClicked: {
+                        thorcam.refreshCameras()
+                        cmbxThorcam.currentIndex = findIndexOfDefault(cmbxThorcam.model, cmbxThorcam.defaultStr)
+                    }
                 }
 
                 Label {
@@ -127,7 +141,14 @@ Item {
                     Layout.fillWidth: true
                     Material.theme: Material.Light
 
+                    property string defaultStr: ""
+                    currentIndex: findIndexOfDefault(model, defaultStr)
+
                     model: zStage.availableCOMPorts
+                    onCurrentTextChanged: {
+                        if(currentText !== "")
+                            defaultStr = currentText
+                    }
                 }
 
                 Button {
@@ -142,7 +163,10 @@ Item {
 
                     text: "⟳"
 
-                    onClicked: zStage.refreshCOMPorts()
+                    onClicked: {
+                        zStage.refreshCOMPorts()
+                        cmbxCOMPort.currentIndex = findIndexOfDefault(cmbxCOMPort.model, cmbxCOMPort.defaultStr)
+                    }
                 }
 
                 Label {
@@ -209,5 +233,12 @@ Item {
             id: errorTextArea
             font.pixelSize: 15
         }
+    }
+
+    function findIndexOfDefault(model, dflt) {
+        for (var indx = 0; indx < model.length; indx++)
+            if (model[indx] === dflt) return indx
+
+        return -1
     }
 }
