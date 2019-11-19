@@ -19,7 +19,15 @@ Item {
 
             Image {
                 Layout.preferredHeight: aboutView.height / 4
-                Layout.preferredWidth: aboutView.width / 3
+                Layout.preferredWidth: aboutView.width / 4
+
+                fillMode: Image.PreserveAspectFit
+                source: "craggslablogo.png"
+            }
+
+            Image {
+                Layout.preferredHeight: aboutView.height / 4
+                Layout.preferredWidth: aboutView.width / 4
 
 
                 fillMode: Image.PreserveAspectFit
@@ -28,7 +36,7 @@ Item {
 
             Image {
                 Layout.preferredHeight: aboutView.height / 4
-                Layout.preferredWidth: aboutView.width / 3
+                Layout.preferredWidth: aboutView.width / 4
 
                 fillMode: Image.PreserveAspectFit
                 source: "EPSRC.png"
@@ -36,7 +44,7 @@ Item {
 
             Image {
                 Layout.preferredHeight: aboutView.height / 4
-                Layout.preferredWidth: aboutView.width / 3
+                Layout.preferredWidth: aboutView.width / 4
 
                 fillMode: Image.PreserveAspectFit
                 source: "bbsrc.png"
@@ -63,7 +71,7 @@ Item {
                 onLinkActivated: Qt.openUrlExternally(link)
                 linkColor: "lightblue"
 
-                text:  "Version 0.0
+                text:  "Version 1.0
                         <br><br>
                         The smfBox was developed in the Craggs Lab, Department of Chemistry, University of Sheffield
                         <br><br>
@@ -73,7 +81,7 @@ Item {
                         <br><br>
                         Please help continued development by citing our <a href=\"\">paper</a>
                         <br><br>
-                        Report all issues on our github <a href=\"https://github.com/craggslab/smfBox\">issue tracker</a>
+                        Report all issues on our github <a href=\"https://github.com/craggslab/smOTTER/issues\">issue tracker</a>
                         "
 
                 MouseArea {
