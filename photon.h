@@ -6,6 +6,7 @@
 #include <chrono>
 #include <shared_mutex>
 #include <array>
+#include <unordered_map>
 
 enum class PhotonType {
     DD,
