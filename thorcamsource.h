@@ -18,10 +18,14 @@ namespace ThorCam {
         Q_PROPERTY(qreal exposureMin READ getExposureMin NOTIFY onExposureRangeChanged)
         Q_PROPERTY(qreal exposureMax READ getExposureMax NOTIFY onExposureRangeChanged)
         Q_PROPERTY(qreal exposure READ getExposure WRITE setExposure NOTIFY onExposureChanged)
+        Q_PROPERTY(qreal exposureRangeMax READ getExposureRangeMax WRITE setExposureRangeMax NOTIFY onExposureRangeMaxChanged)
     public:
         explicit ThorCamSource(QObject *parent = nullptr);
 
         QStringList getAvailableCameras();
+
+        qreal getExposureRangeMax();
+        void setExposureRangeMax(qreal max);
 
         qreal getExposureMin() const;
         qreal getExposureMax() const;
@@ -32,6 +36,7 @@ namespace ThorCam {
         void onAvailableCamerasChanged();
         void onExposureChanged();
         void onExposureRangeChanged();
+        void onExposureRangeMaxChanged();
 
     public slots:
         void idChanged(qint32 newID);
@@ -41,6 +46,7 @@ namespace ThorCam {
         void refreshCameras();
     private:
         ThorCam m_cam;
+        qreal m_exposureRangeMax;
     };
 
 }

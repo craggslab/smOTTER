@@ -2,7 +2,7 @@
 
 namespace ThorCam {
 
-    ThorCamSource::ThorCamSource(QObject*) {}
+    ThorCamSource::ThorCamSource(QObject*) : m_exposureRangeMax(10.0) {}
 
     QStringList ThorCamSource::getAvailableCameras() {
         auto ids = ThorCam::getAvailableIDs();
@@ -22,8 +22,8 @@ namespace ThorCam {
     }
 
     qreal ThorCamSource::getExposureMax() const {
-        if (!m_cam.isConnected()) return 1.0;
-        else return m_cam.getExposureMax();
+        if (!m_cam.isConnected()) return m_exposureRangeMax;
+        else return std::min<>(m_exposureRangeMax, m_cam.getExposureMax());
     }
 
     qreal ThorCamSource::getExposure() const {
@@ -83,5 +83,12 @@ namespace ThorCam {
     void ThorCamSource::refreshCameras() {
         qDebug() << "Refresh";
         emit onAvailableCamerasChanged();
+    }
+
+    qreal ThorCamSource::getExposureRangeMax() { return m_exposureRangeMax; }
+    void ThorCamSource::setExposureRangeMax(qreal max)
+    {
+        m_exposureRangeMax = max;
+        emit onExposureRangeChanged();
     }
 }

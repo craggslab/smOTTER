@@ -6,9 +6,11 @@ import ByteImage 1.0
 import QtQuick.Controls.Material 2.3
 
 Item {
-
     property alias comPortDefault: cmbxCOMPort.defaultStr
     property alias thorCamDefault: cmbxThorcam.defaultStr
+    property real thorCamExposureRangeMax : 10.0
+
+    onThorCamExposureRangeMaxChanged: thorcam.exposureRangeMax = thorCamExposureRangeMax
 
     RowLayout {
         anchors.fill: parent
