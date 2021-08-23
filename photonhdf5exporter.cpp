@@ -144,10 +144,10 @@ std::optional<std::string> PhotonHDF5Exporter::createFile()
         auto file = H5::H5File(m_filename, H5F_ACC_TRUNC);
 
         // ----- Root Group ------- //
-        writeStringAttribute("Photon-HDF5", 			PhotonHDF5::format_name_name, 		file);
-        writeStringAttribute("0.4", 					PhotonHDF5::format_version_name, 	file);
-        writeDataset<float>	({ 60.0f }, 				PhotonHDF5::acq_duration_name, 		PhotonHDF5::acq_duration_desc, 	H5::PredType::NATIVE_FLOAT, H5::PredType::IEEE_F32LE, file);
-        writeStringDataset	(m_description,				PhotonHDF5::description_name, 		PhotonHDF5::description_desc,	file);
+        writeStringAttribute("Photon-HDF5", 										PhotonHDF5::format_name_name, 		file);
+        writeStringAttribute("0.4", 												PhotonHDF5::format_version_name, 	file);
+        writeDataset<float>	({ static_cast<float>(m_acquisitionDuration.count()) }, PhotonHDF5::acq_duration_name, 		PhotonHDF5::acq_duration_desc, 	H5::PredType::NATIVE_FLOAT, H5::PredType::IEEE_F32LE, file);
+        writeStringDataset	(m_description,											PhotonHDF5::description_name, 		PhotonHDF5::description_desc,	file);
 
         // ----- Photon Data Group ------- //
         auto photonDataGroup = createGroup(PhotonHDF5::photon_data_name, PhotonHDF5::photon_data_desc, file);
