@@ -109,6 +109,7 @@ Pane {
         category: "ZFocusSettings"
         property alias comPortDefault: zFocus.comPortDefault
         property alias thorCamDefault: zFocus.thorCamDefault
+        property alias thorCamExposureRangeMax : zFocus.thorCamExposureRangeMax
 
         fileName: "./smfBox_Settings.ini"
     }
