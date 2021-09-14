@@ -411,19 +411,28 @@ NICard::NIResult NICard::clearTriggers()
 
     RET_IF_FAILED(DAQmxCreateTask("Trigger Channel Clear", &clearTriggers));
 
-    RET_IF_FAILED(DAQmxCreateDOChan(clearTriggers, (m_deviceName + "/" + m_donorLaserPin).c_str(), "Donor Laser Trigger", DAQmx_Val_ChanForAllLines));
-    RET_IF_FAILED(DAQmxCreateDOChan(clearTriggers, (m_deviceName + "/" + m_acceptorLaserPin).c_str(), "Acceptor Laser Trigger", DAQmx_Val_ChanForAllLines));
-    RET_IF_FAILED(DAQmxCreateDOChan(clearTriggers, (m_deviceName + "/" + m_donorDetectorGate).c_str(), "Donor Detector Gate Signal", DAQmx_Val_ChanForAllLines));
-    RET_IF_FAILED(DAQmxCreateDOChan(clearTriggers, (m_deviceName + "/" + m_acceptorDetectorGate).c_str(), "Acceptor Detector Gate Signal", DAQmx_Val_ChanForAllLines));
+    const auto err = [=]() -> NIResult {
+        RET_IF_FAILED(DAQmxCreateDOChan(clearTriggers, (m_deviceName + "/" + m_donorLaserPin).c_str(), "Donor Laser Trigger", DAQmx_Val_ChanForAllLines));
+        RET_IF_FAILED(DAQmxCreateDOChan(clearTriggers, (m_deviceName + "/" + m_acceptorLaserPin).c_str(), "Acceptor Laser Trigger", DAQmx_Val_ChanForAllLines));
+        RET_IF_FAILED(DAQmxCreateDOChan(clearTriggers, (m_deviceName + "/" + m_donorDetectorGate).c_str(), "Donor Detector Gate Signal", DAQmx_Val_ChanForAllLines));
+        RET_IF_FAILED(DAQmxCreateDOChan(clearTriggers, (m_deviceName + "/" + m_acceptorDetectorGate).c_str(), "Acceptor Detector Gate Signal", DAQmx_Val_ChanForAllLines));
 
-    RET_IF_FAILED(DAQmxWriteDigitalLines(clearTriggers, 1, true, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, values, nullptr, nullptr));
+        RET_IF_FAILED(DAQmxWriteDigitalLines(clearTriggers, 1, true, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, values, nullptr, nullptr));
 
-    RET_IF_FAILED(DAQmxWaitUntilTaskDone(clearTriggers, DAQmx_Val_WaitInfinitely));
+        RET_IF_FAILED(DAQmxWaitUntilTaskDone(clearTriggers, DAQmx_Val_WaitInfinitely));
 
-    RET_IF_FAILED(DAQmxStopTask(clearTriggers));
-    RET_IF_FAILED(DAQmxClearTask(clearTriggers));
+        RET_IF_FAILED(DAQmxStopTask(clearTriggers));
 
-    return std::nullopt;
+        return std::nullopt;
+    }();
+
+    if (err.has_value()) {
+        DAQmxClearTask(clearTriggers);
+    } else {
+        RET_IF_FAILED(DAQmxClearTask(clearTriggers));
+    }
+
+    return err;
 }
 
 void NICard::clearTasks()
