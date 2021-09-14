@@ -536,6 +536,7 @@ NICard::NIResult NICard::analysePhotons(const std::vector<uInt32> &buffer, uInt3
             }
             else
             {
+                arrivalTimes[arrivalBin]++;
                 continue;
             }
 
